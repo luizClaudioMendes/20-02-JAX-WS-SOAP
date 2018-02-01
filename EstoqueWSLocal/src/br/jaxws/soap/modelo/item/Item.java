@@ -2,7 +2,7 @@ package br.jaxws.soap.modelo.item;
 
 import javax.xml.bind.annotation.XmlRootElement;
 
-@XmlRootElement
+@XmlRootElement//anotacao JAX-B -- realiza a ligacao entre o mundo java e XML
 public class Item {
 
 	private String codigo;

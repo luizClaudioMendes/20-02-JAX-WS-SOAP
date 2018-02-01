@@ -1,6 +1,5 @@
 package br.jaxws.soap.modelo.item;
 
-
 public class Filtro {
 
 	private TipoItem tipo;
