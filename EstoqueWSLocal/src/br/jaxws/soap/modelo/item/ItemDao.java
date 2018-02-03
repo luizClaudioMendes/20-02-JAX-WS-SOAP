@@ -45,6 +45,7 @@ public class ItemDao {
 	}
 
 	//este método existe apenas para facilitar o primeiro exercicio que nao usa o filtro
+	@Deprecated
 	public ArrayList<Item> todosItens() {
 		return new ArrayList<>(ITENS.values());
 	}
