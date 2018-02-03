@@ -1,10 +1,14 @@
-package br.jaxws.soap.modelo.usuario;
+package br.jaxws.soap.modelo.dao;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
+
+import br.jaxws.soap.modelo.usuario.TokenUsuario;
+import br.jaxws.soap.modelo.usuario.Usuario;
+import br.jaxws.soap.modelo.usuario.Usuario.Builder;
 
 
 public class TokenDao {

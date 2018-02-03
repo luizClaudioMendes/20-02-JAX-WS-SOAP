@@ -1,6 +1,8 @@
-package br.jaxws.soap.modelo.ws;
+package br.jaxws.soap.modelo.utilitario;
 
 import javax.xml.ws.Endpoint;
+
+import br.jaxws.soap.modelo.ws.EstoqueWS;
 
 public class PublicaWebService {
 

@@ -1,4 +1,4 @@
-package br.jaxws.soap.modelo.item;
+package br.jaxws.soap.modelo.exception;
 
 import java.util.List;
 

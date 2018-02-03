@@ -1,10 +1,14 @@
-package br.jaxws.soap.modelo.item;
+package br.jaxws.soap.modelo.dao;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import br.jaxws.soap.modelo.item.Filtro;
+import br.jaxws.soap.modelo.item.Item;
+import br.jaxws.soap.modelo.item.Item.Builder;
 
 
 public class ItemDao {

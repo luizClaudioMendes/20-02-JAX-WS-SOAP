@@ -9,11 +9,12 @@ import javax.jws.WebService;
 import javax.xml.ws.RequestWrapper;
 import javax.xml.ws.ResponseWrapper;
 
+import br.jaxws.soap.modelo.dao.ItemDao;
+import br.jaxws.soap.modelo.dao.TokenDao;
+import br.jaxws.soap.modelo.exception.AutorizacaoException;
 import br.jaxws.soap.modelo.item.Filtros;
 import br.jaxws.soap.modelo.item.Item;
-import br.jaxws.soap.modelo.item.ItemDao;
-import br.jaxws.soap.modelo.usuario.AutorizacaoException;
-import br.jaxws.soap.modelo.usuario.TokenDao;
+import br.jaxws.soap.modelo.item.ItemValidador;
 import br.jaxws.soap.modelo.usuario.TokenUsuario;
 
 /*
@@ -66,6 +67,7 @@ public class EstoqueWS {
 			throw new AutorizacaoException("token invalido fault String.");
 		}
 		
+		new ItemValidador(item).validate();;
 		
 		
 		this.dao.cadastrar(item);

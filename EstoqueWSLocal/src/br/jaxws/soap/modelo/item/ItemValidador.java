@@ -3,6 +3,8 @@ package br.jaxws.soap.modelo.item;
 import java.util.ArrayList;
 import java.util.List;
 
+import br.jaxws.soap.modelo.exception.ItemValidadorException;
+
 public class ItemValidador {
 
 	private Item item;

@@ -1,13 +1,24 @@
 package br.jaxws.soap.modelo.item;
 
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
+@XmlAccessorType(XmlAccessType.FIELD)
 @XmlRootElement//anotacao JAX-B -- realiza a ligacao entre o mundo java e XML
 public class Item {
 
+	@XmlElement(required=true)
 	private String codigo;
+	
+	@XmlElement(required=true)
 	private String nome;
+	
+	@XmlElement(required=true)
 	private String tipo;
+	
+	@XmlElement(required=true)
 	private int quantidade;
 
 	Item() {

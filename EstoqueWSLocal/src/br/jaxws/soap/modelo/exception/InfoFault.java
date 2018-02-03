@@ -1,4 +1,4 @@
-package br.jaxws.soap.modelo.usuario;
+package br.jaxws.soap.modelo.exception;
 
 import java.util.Date;
 
