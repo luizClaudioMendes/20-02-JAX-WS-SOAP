@@ -7,6 +7,10 @@ import javax.jws.WebMethod;
 import javax.jws.WebParam;
 import javax.jws.WebResult;
 import javax.jws.WebService;
+import javax.jws.soap.SOAPBinding;
+import javax.jws.soap.SOAPBinding.ParameterStyle;
+import javax.jws.soap.SOAPBinding.Style;
+import javax.jws.soap.SOAPBinding.Use;
 import javax.xml.ws.RequestWrapper;
 import javax.xml.ws.ResponseWrapper;
 
@@ -20,8 +24,11 @@ import br.jaxws.soap.modelo.usuario.TokenUsuario;
 
 /*
  * a anotaçao @WebService diz ao servidor que esta classe é um web service.
- */
+ * 
+ * @SOAPBinding(style=Style.RPC, use=Use.ENCODED, parameterStyle=ParameterStyle.BARE)//alternativa para utilizacao do soap (mais antiga)
+ * nao reflete o uso. somente expondo as configuraçoes alternativas.
 @WebService
+@SOAPBinding(style=Style.RPC, use=Use.ENCODED, parameterStyle=ParameterStyle.BARE)//padrao para utilizacao moderna do soap
 public class EstoqueWS {
 	
 	private ItemDao dao = new ItemDao();
