@@ -27,8 +27,9 @@ import br.jaxws.soap.modelo.usuario.TokenUsuario;
  * 
  * @SOAPBinding(style=Style.RPC, use=Use.ENCODED, parameterStyle=ParameterStyle.BARE)//alternativa para utilizacao do soap (mais antiga)
  * nao reflete o uso. somente expondo as configuraçoes alternativas.
+ */
 @WebService
-@SOAPBinding(style=Style.RPC, use=Use.ENCODED, parameterStyle=ParameterStyle.BARE)//padrao para utilizacao moderna do soap
+@SOAPBinding(style=Style.DOCUMENT, use=Use.LITERAL, parameterStyle=ParameterStyle.WRAPPED)//padrao para utilizacao moderna do soap
 public class EstoqueWS {
 	
 	private ItemDao dao = new ItemDao();
