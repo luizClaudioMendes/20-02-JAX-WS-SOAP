@@ -172,6 +172,65 @@ Ao confirmar é gerado os dados para enviar uma requisição SOAP. Isto é, uma 
 
 
 
+## O primeiro XML SOAP
+Repare que uma mensagem **SOAP** possui um **Envelope**, um **Header** (cabeçalho opcional) e um **Body** que possui um elemento com o mesmo nome do método no serviço: *getItens*.
+
+```xml
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ws="http://ws.estoque.caelum.com.br/">
+   		<soapenv:Header></soapenv:Header>
+   		<soapenv:Body>
+     		 	<ws:getItens></ws:getItens>
+  		 </soapenv:Body>
+		</soapenv:Envelope>
+```
+Ao submeter uma requisição **SOAP** recebemos uma resposta **SOAP**. Um **XML** com a mesma estrutura, apenas o corpo da mensagem (Body) muda:
+```xml
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+   		<S:Body>
+     			 <ns2:getItensResponse xmlns:ns2="http://ws.estoque.caelum.com.br/">
+        				 <return>
+            				<codigo>GAL</codigo>
+            				<nome>Galaxy Tab</nome>
+            				<quantidade>3</quantidade>
+            				<tipo>Tablet</tipo>
+         				</return>
+       				  ...
+         				<return>
+           				<codigo>IP4</codigo>
+            				<nome>IPhone 4 C</nome>
+            				<quantidade>7</quantidade>
+            				<tipo>Celular</tipo>
+         				</return>
+      			</ns2:getItensResponse>
+   		</S:Body>
+	</S:Envelope>
+```
+Qualquer mensagem **SOAP** possui um **Envelope** e um **Body**, apenas o **Header é opcional**. A nossa mensagem SOAP não está perfeita e tem como melhorar muito. Mas agora é a hora dos exercícios!
+
+O que você aprendeu?
+- Serviços Web são utilizados para integrar sistemas
+- SOAP é XML que trafega em cima do protocolo HTTP
+- o JRE já vem com o JAX-WS (Metro) para usar SOAP
+- o contrato do serviço é o WSDL que também é um XML
+- uma mensagem SOAP possui um Envelope e um Body,
+- na mensagem SOAP o Header é opcional
+
+As outras siglas também são referente de especificações Java EE:
+- **JAX-RS**, especificação para criar **serviços web baseado no REST**
+- **JAX-B**, especificação para **mapear** (binding) **XML para objetos Java**
+- **JAX-RPC**, antigo padrão de serviços web, o nome antigo do **JAX-WS**
+- **JAX-P**, especificação para **ler e escrever XML** (processing)
+
+Qual é o papel SOAP no serviço web?
+O **SOAP** é um padrão ou protocolo que define o **XML** que trafega entre **Cliente e Servidor** quando o serviço web é executado. Esse XML também é chamado de **mensagem SOAP**.
+
+Ela consiste de três partes: **um Envelope que é o elemento raiz**. Dentro dele pode ter um **Header** para definir **meta-informações como tokens, senha, etc** e um **Body** que contém os **dados principais da mensagem**.
+
+###### É importante mencionar que a mensagem SOAP normalmente trafega em cima do protocolo HTTP, no entanto não depende dele.
+
+Ou seja, a mensagem SOAP poderia ser trafegada usando outros protocolos.
+
+
 
 
 
