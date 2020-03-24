@@ -14,6 +14,7 @@
 
     SoapUI.
     
+    
 ## INTRODUÇÃO
 A troca de informações faz parte da maioria dos sistema, sendo raro o funcionamento de um sistema isoladamente. Há sistemas de terceiros, como Google Maps ou PayPal, mas também há na mesma empresa aplicações separadas que se conectam e trocam informações. 
 
@@ -33,7 +34,22 @@ Criar um novo protocolo do zero era fora de cogitação.
 
 Por esses motivos o **Web Service** do **W3C** é baseado em **HTTP** e **XML**, duas tecnologias onipresentes e que a maioria das linguagens sabe trabalhar muito bem.
 
+## SOAP na JRE
+Quando Java nasceu uma das principais características da plataforma era funcionar bem na rede, ou seja, na internet. 
 
+Por isso o Java já vem com as principais classes para se conectar com recursos na rede. 
+
+Quando os serviços Web surgiram e ganharam popularidade as primeiras bibliotecas eram exclusivamente do servidor de aplicação.
+
+Isso significa que na época era preciso usar um servidor de aplicação para publicar o serviço web. Desde a versão **1.6** do Java isso mudou e as classes para rodar um **Web Service SOAP** foram embutidas na **JRE**. 
+
+Dentro da plataforma Java as bibliotecas são organizadas em especificações. 
+
+A especificação que trata de **SOAP** se chama **JAX-WS** (Java API for XML - Web Service) e a sua implementação referencial, o **Metro** (https://jax-ws.java.net/), está embutida na **JRE**.
+
+Nas primeiras seções vamos utilizar apenas a JRE para criar serviços web para simplificar o ambiente de execução. Então não preciso usar o servidor mais sofisticado para Web Services? Claro que não pois dentro de uma aplicação há várias outras preocupações, além da integração na web. 
+
+Mais para frente veremos como usar um serviço **SOAP** dentro de servidor de aplicação.
 
 ## KEYWORDS
 
