@@ -34,6 +34,7 @@ Criar um novo protocolo do zero era fora de cogitação.
 
 Por esses motivos o **Web Service** do **W3C** é baseado em **HTTP** e **XML**, duas tecnologias onipresentes e que a maioria das linguagens sabe trabalhar muito bem.
 
+
 ## SOAP na JRE
 Quando Java nasceu uma das principais características da plataforma era funcionar bem na rede, ou seja, na internet. 
 
@@ -50,6 +51,69 @@ A especificação que trata de **SOAP** se chama **JAX-WS** (Java API for XML - 
 Nas primeiras seções vamos utilizar apenas a JRE para criar serviços web para simplificar o ambiente de execução. Então não preciso usar o servidor mais sofisticado para Web Services? Claro que não pois dentro de uma aplicação há várias outras preocupações, além da integração na web. 
 
 Mais para frente veremos como usar um serviço **SOAP** dentro de servidor de aplicação.
+
+
+## Ambiente de execução
+No nosso ambiente de desenvolvimento usaremos **JRE** na versão **1.8** (mas poderia ser 1.7) e **Eclipse Luna** na versão Java EE. 
+
+As duas ferramentas já estão instalados então podemos começar criar um novo** projeto Java padrão**.
+
+A ideia do projeto é simular uma **aplicação de estoque**. 
+
+Vamos imaginar que essa aplicação foi criada em Java e fez bastante sucesso, tanto que outras aplicações também gostariam de acessar informações sobre o estoque. Como não todas as aplicações foram escritos em Java é preciso pensar na integração heterogênea, ideal então para usar um Web Service!
+
+O modelo dessa aplicação já está pronto e possui duas classes. Temos uma classe **Item** e um **ItemDao**. 
+
+O primeiro representa um item no estoque e possui os atributos codigo, nome, tipo e quantidade:
+
+
+    public class Item {
+       		private String codigo;
+       		private String nome;
+        		private String tipo;
+        		private int quantidade;
+    
+        		//construtores  e gets/sets omitidos
+
+O ItemDao ainda não acessa o banco de dados e cria apenas alguns objetos em memória. Os métodos do DAO são encontrar e cadastra itens:
+
+
+    public class ItemDao {
+       		 private static Map<String, Item> ITENS = new HashMap<>();
+    
+       		 public ItemDao() {
+            			// populando alguns itens no estoque
+           			 ITENS.put("MEA", new Item("MEA", "MEAN", "Livro", 5));
+           			 ITENS.put("SEO", new Item("SEO", "SEO na Prática", "Livro", 4));
+           			 ITENS.put("IP4", new Item("IP4", "IPhone 4 C", "Celular", 7));
+           			 ITENS.put("GAL", new Item("GAL", "Galaxy Tab", "Tablet", 3));
+           			 ITENS.put("MOX", new Item("MOX", "Moto X", "Celular" , 6));
+        		}
+    
+        		//métodos para cadastrar e procurar Item
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## KEYWORDS
 
