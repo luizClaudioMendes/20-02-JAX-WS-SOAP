@@ -289,6 +289,32 @@ public class PublicaEstoqueWS {
 ```
 
 
+## Mão a obra: Usando SoapUI
+Criamos o Web Service através do **JAX-WS**, chegou a hora de testar o nosso serviço. 
+
+Testar significa criar um cliente que entende a interface WSDL e sabe enviar uma mensagem SOAP. Para os testes vamos usar o SoapUI.
+
+Para começar a usar o SoapUI basta acessar o site e baixar a versão atual: http://www.soapui.org/
+
+SoapUI vem com duas versões: SoapUI e SoapUI Pro. A versão Pro é paga e oferece alguns recursos a mais, como relatórios e métricas, depuração de testes entre outros. 
+
+Após ter baixado e instalado o SoapUI podemos criar um novo projeto do tipo SOAP.
+
+1) Ao iniciar o SoapUI crie um New SOAP Project.
+2) No diálogo coloque a URL do WSDL no campo Initial WSDL: http://localhost:8080/estoquews?wsdl
+3) Confirme. Automaticamente é gerado um cliente que sabe enviar uma requisição SOAP.
+4) Abra o elemento **Request 1** abaixo do elemento **todosItens**.
+5) Execute a requisição SOAP!
+
+
+
+
+
+
+
+
+
+
 
 
 
