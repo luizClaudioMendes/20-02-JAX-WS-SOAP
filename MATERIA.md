@@ -250,6 +250,45 @@ O **ItemDao** fornece os dados mas não acessa o banco de dados de verdade. Ele 
 5) Use a anotação **@WebService** na classe **EstoqueWS**
 
 
+## Mãos a obra: Publicar um Endpoint!
+Como não estamos usando ainda um servidor de aplicação é preciso subir o serviço programaticamente. 
+
+No mundo de serviços web, subir é chamado de **publicar o Endpoint**. 
+
+O Endpoint é o endereço concreto do serviço e o **JAX-WS** oferece uma classe com o mesmo nome! Com ela podemos **associar uma URL com a implementação do serviço web**. 
+
+Vamos lá, mãos a obra!
+
+1) No projeto estoquews crie uma nova classe **PublicaEstoqueWS** dentro do pacote br.com.estoque.ws.
+
+2) Gere o método main.
+
+3) No método main instancie o objeto do serviço, define a URL e use a classe Endpoint:
+
+```java
+EstoqueWS implementacaoWS = new EstoqueWS();
+	String URL = "http://localhost:8080/estoquews";
+	System.out.println("EstoqueWS rodando: " + URL);
+	//associando URL com a implementacao
+	Endpoint.publish(URL, implementacaoWS);
+```
+4) Rode a classe **PublicaEstoqueWS** e acesse a **URL** com o sufixo **?wsdl: http://localhost:8080/estoquews?wsdl**
+
+Segue uma vez o código completo para publicar um serviço web:
+
+```java
+public class PublicaEstoqueWS {
+    public static void main(String[] args) {
+        EstoqueWS implementacaoWS = new EstoqueWS();
+        String URL = "http://localhost:8080/estoquews";
+        System.out.println("EstoqueWS rodando: " + URL);
+        //associando URL com a implementacao
+        Endpoint.publish(URL, implementacaoWS);
+    }
+}
+```
+
+
 
 
 
