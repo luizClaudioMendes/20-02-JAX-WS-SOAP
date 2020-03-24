@@ -232,6 +232,23 @@ Ou seja, a mensagem SOAP poderia ser trafegada usando outros protocolos.
 
 
 
+## Mãos a obra: O primeiro serviço web
+Vamos preparar o projeto e as classes do Web Service!
+
+1) Se não fez ainda, crie um novo projeto Java no Eclipse com o nome estoquews. O projeto não tem nada de especial, é um projeto Java padrão.
+
+Nesse projeto vamos simular uma aplicação de estoque. Imagine que essa aplicação já foi criada em Java e fez bastante sucesso, tanto que outras aplicações também gostariam de acessar informações sobre o estoque. Como nem todas as aplicações foram escritas em Java é preciso pensar na integração heterogênea, ideal então para usar um Web Service!
+
+~~2) O modelo dessa aplicação já está pronto então e possui algumas classes que usaremos durante o treinamento. Você pode baixar o modelo da aplicação aqui. Copie todo o código fonte para a pasta src do projeto.~~
+
+3) Para este exercício inicial usaremos a classe **Item** e um **ItemDao** que você acabou de importar. O primeiro representa um item no estoque e possui os atributos *codigo*, *nome*, *tipo* e *quantidade*.
+
+O **ItemDao** fornece os dados mas não acessa o banco de dados de verdade. Ele cria apenas alguns objetos em memória. Os métodos do DAO são *todosItens* e *cadastrar*.
+
+4) Crie uma nova classe **EstoqueWS** dentro do pacote br.com.estoque.ws. A classe vai ter um método *getItens* que devolve a lista de itens carregada pelo DAO:
+
+5) Use a anotação **@WebService** na classe **EstoqueWS**
+
 
 
 
