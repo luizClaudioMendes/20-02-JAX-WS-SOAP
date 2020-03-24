@@ -93,6 +93,31 @@ O ItemDao ainda não acessa o banco de dados e cria apenas alguns objetos em mem
         		//métodos para cadastrar e procurar Item
 
 
+## Criação do serviço web
+Vamos chamar a classe que realmente representa a implementação do serviço web de **EstoqueWS**. 
+
+Ela não tem nada especial e possui por enquanto um método apenas que chamaremos de *getItens()*. 
+
+O método devolve uma lista de itens que buscaremos do DAO:
+
+
+    public class EstoqueWS {
+        		private ItemDao dao = new ItemDao();
+       		public List<Item> getItens() {
+            		System.out.println("Chamando getItens()");
+            		return dao.todosItens();
+        }
+    }
+
+Para realmente indicar que queremos criar o Web Service devemos usar a anotação **@WebService**. Ou seja, a nossa intenção é chamar aquele método usando HTTP e XML:
+
+
+    @WebService
+    	public class EstoqueWS {
+       		 //...
+    	}
+Pronto, é a forma mais simples possível de criar um serviços web!
+
 
 
 
