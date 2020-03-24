@@ -13,6 +13,25 @@
     JBoss Wildfly 8.x 
 
     SoapUI.
+    
+## INTRODUÇÃO
+A troca de informações faz parte da maioria dos sistema, sendo raro o funcionamento de um sistema isoladamente. Há sistemas de terceiros, como Google Maps ou PayPal, mas também há na mesma empresa aplicações separadas que se conectam e trocam informações. 
+
+Há vários motivos porque sistemas precisam trocar informações, pode ser que precisamos algum dado específico que a aplicação cuida ou acessar alguma lógica. 
+
+De qualquer forma, quando um sistema ou processo acessa o outro para trocar informações falamos de integração. 
+
+O problema é que nem sempre é fácil fazer essa integração funcionar.
+
+A maneira de integração mais difundida hoje em dia está no uso de **Web Services**. 
+
+Existem várias maneiras de se implementar um Web Service, mas apesar de ser um termo genérico, existe algo muito bem especificado pela W3C.
+
+Um dos quesitos primordiais durante a elaboração desta especificação foi que precisaríamos aproveitar toda a plataforma, arquitetura e protocolos já existentes a fim de minimizar o impacto de integrar sistemas. 
+
+Criar um novo protocolo do zero era fora de cogitação.
+
+Por esses motivos o **Web Service** do **W3C** é baseado em **HTTP** e **XML**, duas tecnologias onipresentes e que a maioria das linguagens sabe trabalhar muito bem.
 
 
 
