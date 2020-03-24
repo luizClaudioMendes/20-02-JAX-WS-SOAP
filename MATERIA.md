@@ -3,11 +3,16 @@
 
 ## WHAT I NEED?
 - Objetivo: **desenvolver um projeto Java para criar um serviço SOAP**. 
+
 - necessário:
--- Java JDK 8 (pode ser JDK 7) 
--- Eclipse IDE for Java EE Developers. 
--- JBoss Wildfly 8.x 
--- SoapUI.
+
+    Java JDK 8 (pode ser JDK 7) 
+
+    Eclipse IDE for Java EE Developers. 
+
+    JBoss Wildfly 8.x 
+
+    SoapUI.
 
 
 
