@@ -119,6 +119,27 @@ Para realmente indicar que queremos criar o Web Service devemos usar a anotaçã
 Pronto, é a forma mais simples possível de criar um serviços web!
 
 
+## Publicando (programaticamente) o primeiro Endpoint
+Ok, mas ainda falta uma coisa. Como não estamos usando um servidor formal é preciso publicar o serviço programaticamente. 
+
+No mundo de serviços web isso é chamado de publicar o Endpoint. 
+
+O Endpoint é o endereço concreto do serviço. 
+
+A classe Endpoint possui o papel de associar a nossa implementação EstoqueWS com uma URL:
+
+
+    public class PublicaEstoqueWS {
+        		public static void main(String[] args) {
+            			EstoqueWS implementacaoWS = new EstoqueWS();
+            			String URL = "http://localhost:8080/estoquews";
+            			System.out.println("EstoqueWS rodando: " + URL);
+            			//associando URL com implementacao
+           			 Endpoint.publish(URL, implementacaoWS);
+       		 }
+    	}
+
+
 
 
 
