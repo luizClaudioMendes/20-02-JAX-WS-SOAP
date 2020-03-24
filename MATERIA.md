@@ -140,6 +140,22 @@ A classe Endpoint possui o papel de associar a nossa implementação EstoqueWS c
     	}
 
 
+## O Contrato do Serviço
+Como visto na URL, vamos acessar o serviço através do protocolo **HTTP**. Também usaremos **XML**, como já falamos. O nosso serviço se chama **estoquews** na **URL** e define um método com o nome *getItens* que devolve uma lista de itens.
+
+Então a gente poderia criar uma página **HTML** com as informações de quais métodos estão disponíveis no serviço, além de explicar alguns detalhes aos clientes. Mas será que é preciso criar uma página dessas página para cada serviço?
+
+Não, claro que não. Deve haver alguma forma mais fácil de descrever o nosso serviço, alguma forma automática. Podemos ver a mágica usando um parâmetro especial na URL:
+
+**http://localhost:8080/estoquews?wsdl**
+
+**WSDL** significa **Web Service Description Language** e não é nada mais do que um **XML** que descreve o nosso serviço!
+
+###### Nele temos todas as informações, independente do Java, que um cliente precisa para chamar o Endpoint. 
+
+Fácil não? Bom, ainda não entendemos tudo nesse arquivo. E mesmo com nosso serviços simples tem bastante informação, mas saiba que esse arquivo não foi feito para nós humanos e sim para ferramentas interpretarem e criarem o cliente.
+
+
 
 
 
