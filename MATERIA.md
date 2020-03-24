@@ -157,6 +157,20 @@ Fácil não? Bom, ainda não entendemos tudo nesse arquivo. E mesmo com nosso se
 
 
 
+## Testando o serviço com SoapUI
+Para testar o nosso serviço vamos criar um cliente. Ou seja, vamos usar uma ferramenta que irá interpretar o WSDL e gerar um cliente que sabe usar o nosso serviço. 
+
+Existem várias ferramentas para tal, uma dos mais famosas no mercado é o **SoapUI**. Que é uma aplicação Java (mas não precisaria ser) que possui uma interface fácil de usar, ideal para testes.
+
+Ao iniciar o SoapUI devemos criar um **New SOAP Project**. No Diálogo basta colocar a **URL** do **WSDL** no campo **Initial WSDL**:
+
+**http://localhost:8080/estoquews?wsdl**
+
+Ao confirmar é gerado os dados para enviar uma requisição SOAP. Isto é, uma requisição **HTTP POST** que envia **XML**. 
+
+###### Esse XML é a mensagem SOAP!
+
+
 
 
 
