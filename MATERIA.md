@@ -340,6 +340,33 @@ O primeiro usa **soapenv**, o segundo **ws**.
 
 Você deve estar um pouco inseguro com o mundo XML. O mundo XML pode ser complexo mas com tempo e prática as coisas vão se encaixar melhor.
 
+## Para saber mais: Estilos de integração
+Você que está fazendo este curso, certamente sabe que é raríssimo um sistema funcionar de forma isolada. Sendo sempre necessário fazer integração com outros sistemas que não foram desenhadas com esse propósito. 
+
+Para resolver esse problema, podemos usar os mais diversos estilos de integração. Dentre eles:
+**Troca de arquivos**
+**Banco de dados compartilhado**
+**RPC**
+**Mensageria**
+
+A questão é que cada estilo tem suas vantagens e desvantagens. É por isso que é papel do arquiteto pensar em algumas questões antes de decidir qual estilo aplicar:
+
+- Vamos trocar funcionalidades ou apenas dados?
+- Quais dados trocaremos?
+- Qual protocolos utilizaremos?
+- A comunicação será síncrona ou assíncrona?
+- Quais ferramentas/frameworks utilizaremos?
+Entre outros …
+
+Nesse treinamento focaremos no estilo **RPC** (**Remote Procedure Call**). 
+
+Objetivo desse estilo de integração é chamar um procedimento remotamente (via rede usamos **HTTP com SOAP**). 
+
+No mundo Java este procedimento é um método.
+
+RPC segue o modelo cliente-server (síncrono) que já testamos neste capítulo. 
+
+O SoapUI foi o cliente e rodamos o server através do JRE!
 
 
 
