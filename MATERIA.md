@@ -369,6 +369,510 @@ RPC segue o modelo cliente-server (síncrono) que já testamos neste capítulo.
 O SoapUI foi o cliente e rodamos o server através do JRE!
 
 
+## Revisão
+No capítulo anterior, escrevemos e publicamos o primeiro serviço SOAP. Apesar de ser a forma mais simples possível, já foi o bastante para conhecermos alguns artefatos importantes. 
+
+**Qualquer serviço define um contrato, o WSDL**. 
+
+**Os dados que trafegam entre cliente e servidor são apresentados através das mensagens SOAP. **
+
+Vimos que no nosso serviço temos uma mensagem de ida e uma de volta. 
+
+Publicamos o nosso serviço usando **JAX-WS**. Especificação Java EE que é especialista neste assunto. 
+
+Por fim criamos um cliente do nosso primeiro serviço. Nesse capítulo, vamos ajustar a mensagem e o WSDL.
+
+
+## Entendendo as operations
+Vamos subir o serviço pelo Eclipse e chamar o WSDL pelo navegador.
+
+No SoapUI temos a mensagem SOAP gerada. Repare que no Body temos um elemento com o nome **getItens**:
+```xml
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ws="http://ws.estoque.caelum.com.br/">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <ws:getItens/>
+   </soapenv:Body>
+</soapenv:Envelope>
+```
+###### O elemento possui o mesmo nome que o método na classe Java. 
+
+Como criamos a implementação do serviço primeiro, **foi utilizado a nomenclatura dela para criar o contrato WSDL** que é a base para o SOAP.
+
+Podemos ver esse elemento operation que faz parte do portType definido no WSDL:
+```xml
+<definitions ...>
+    <types>
+        <!-- definições dos tipos xsd-->
+    </types>
+    <message name="getItens">
+        <part name="parameters" element="tns:getItens" />
+    </message>
+    <message name="getItensResponse">
+        <part name="parameters" element="tns:getItensResponse" />
+    </message>
+    <portType name="EstoqueWS">
+        <operation name="getItens">
+            <input  message="tns:getItens" />
+            <output  message="tns:getItensResponse" />
+        </operation>
+    </portType>
+    <!-- bindings e endereços omitidos-->
+</definitions>
+```
+Repare que o elemento **portType** está parecido com uma **interface Java**: declara um nome (**EstoqueWS**) e** define as operações com cada entrada e saída**.
+
+A mensagem SOAP se baseia no input ou output das operações do portType.
+
+## Melhorando o serviço
+Nosso serviço é simples, mas podemos (e iremos) melhorar muito. 
+
+Aquele elemento **getItens** faz sentido para quem é desenvolvedor Java. Mas será que é um bom nome para desenvolvedores de outras plataformas como Ruby e Python? Precisamos lembrar que nosso serviço é independente de plataforma.
+
+**Não há uma nomenclatura padrão de serviços SOAP**, por isso devemos deixar nosso contrato o mais expressivo possível. Já que ferramentas o usarão para gerar clientes do nosso serviço.
+
+Observe, por exemplo, a resposta SOAP. Lá temos um elemento return, que novamente aparenta ser um nome não muito expressivo, não acha?
+
+Precisamos alterar a classe **EstoqueWS** para definir nomes melhores, portanto nosso primeiro passo será **escolher um outro nome para o método getItens**. 
+
+Poderíamos então dar um rename e fugir da nomenclatura padrão de Java. Porém dessa forma estariamos prejudicando nosso código Java, abrindo mão das convenções de nomenclatura, por conta do WSDL.
+
+**@WebMethod** e **@WebResult**
+Para evitar esse problema, o JAX-WS nos oferece uma alternativa: **a anotação @WebMethod**. 
+
+Com ela, podemos redefinir o nome da operation no WSDL e assim também manipular a mensagem SOAP.
+
+```java
+@WebMethod(operationName="todosOsItens")
+public List<Item> getItens() {
+    System.out.println("Chamando getItens()");
+    return dao.todosItens();
+}
+```
+Essa mudança simples faz com que a requisição SOAP tenha agora um elemento com o nome da operação:
+```xml
+<soapenv:Envelope ...>
+   <soapenv:Header/>
+   <soapenv:Body>
+      <ws:todosOsItens/>
+   </soapenv:Body>
+</soapenv:Envelope>
+```
+Segundo passo é melhorar a resposta SOAP, já que aquele return não deve existir. 
+
+Isso acontece porque o JAX-B (que veremos mais a frente) que é o responsável por gerar o XML, não conhece a interface List. 
+
+Portanto, ele substitui por um nome genérico (return).
+
+Repare que na resposta SOAP aparece para cada item um **elemento return**. 
+
+Uma forma fácil de resolver isso é usar a anotação **@WebResult**:
+```java
+@WebMethod(operationName="todosOsItens")
+@WebResult(name="item")
+public List<Item> getItens() {
+    System.out.println("Chamando getItens()");
+    return dao.todosItens();
+}
+```
+A resposta SOAP já melhorou bastante, veja o XML:
+```xml
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+   <S:Body>
+      <ns2:todosOsItensResponse xmlns:ns2="http://ws.estoque.caelum.com.br/">
+         <item>
+            <codigo>GAL</codigo>
+            <nome>Galaxy Tab</nome>
+            <quantidade>3</quantidade>
+            <tipo>Tablet</tipo>
+         </item>
+         <item>
+            <codigo>MOX</codigo>
+            <nome>Moto X</nome>
+            <quantidade>6</quantidade>
+            <tipo>Celular</tipo>
+         </item>
+         <!-- outros itens -->
+      </ns2:todosOsItensResponse>
+   </S:Body>
+</S:Envelope>
+```
+## Mapeamento com JAX-B
+Houve uma mudança significativa do XML SOAP. 
+
+No entanto há mais para melhorar: é um tanto estranho chamar o **@WebResult** de **item** já que estamos trabalhando com uma **lista de itens**, não acha?
+
+Faz mais sentido usar um elemento **itens** que possui vários filhos **item**, algo assim:
+```xml
+<itens>
+         <item>
+                  ....
+         </item>
+         <item>
+                  ....
+         </item>
+</itens>
+```
+Precisamos resolver isso, mas nosso método **getItens** possui um pequeno problema: ele retorna um List e já vimos que esta interface não é conhecida do JAX-B. Por isso foi preciso usar a anotação **@WebResult** para mapear cada um dos elementos da lista como item no XML. Porém dessa forma, eles ficam órfãos (sem uma tag pai).
+
+Então, para resolvermos esse problema, precisaremos criar uma classe separada para esse propósito. Vamos chamar a classe de **ListaItens** que vai existir para embrulhar a lista original:
+```java
+public class ListaItens {
+
+    private List<Item> itens;
+
+    public ListaItens(List<Item> itens) {
+        this.itens = itens;
+    }
+
+    //esse construtor também é necessário
+    ListaItens() {
+    }    
+}
+```
+Para o JAX-B funcionar corretamente devemos colocar a anotação **@XmlRootElement** e, para não criar um getter e setter, vamos definir o acesso pelo atributo pela anotação **@XmlAccessorType(XmlAccessType.FIELD)**. Repare também que definimos que cada elemento na lista é um item:
+```java
+@XmlRootElement
+@XmlAccessorType(XmlAccessType.FIELD)
+public class ListaItens {
+
+    @XmlElement(name="item")
+    private List<Item> itens;
+
+    public ListaItens(List<Item> itens) {
+        this.itens = itens;
+    }
+
+    //esse construtor também é necessário
+    ListaItens() {
+    }    
+}
+```
+Pronto, no método do serviço colocaremos como retorno **ListaItens**:
+```java
+@WebService()
+public class EstoqueWS {
+
+    private ItemDao dao = new ItemDao(); 
+
+    @WebMethod(operationName="todosOsItens")
+    @WebResult(name="itens")
+    public ListaItens getItens() {
+        System.out.println("Chamando getItens()");
+        return new ListaItens(dao.todosItens()); //criando uma ListaItens
+    }
+
+}
+```
+Tudo pronto para testar de novo! Vamos republicar o serviço e verificar o WSDL. Acesse novamente a URL:
+http://localhost:8080/estoquews?wsdl
+Vá ao SoapUI e atualize o cliente (aperte F5 no EstoqueWSPortBinding). Abra o request e execute a requisição SOAP. Na resposta deve haver um elemento itens seguido pelos elementos item:
+```xml
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+   <S:Body>
+      <ns2:todosOsItensResponse xmlns:ns2="http://ws.estoque.caelum.com.br/">
+         <itens>
+            <item>
+               <codigo>SEO</codigo>
+               <nome>SEO na Prática</nome>
+               <quantidade>4</quantidade>
+               <tipo>Livro</tipo>
+            </item>
+
+            <!-- outros itens omitidos -->
+         </itens>
+      </ns2:todosOsItensResponse>
+   </S:Body>
+</S:Envelope>
+```
+## O que você aprendeu neste capítulo?
+- os métodos Java se tornam operations no WSDL
+- as operations fazem parte do portType
+- as anotações do JAX-WS servem para personalizar o WSDL
+- a especificação JAX-B gera o XML por baixo dos panos
+
+## Mãos a obra: @WebMethod
+Como visto no vídeo anote o método **getItens** com a anotação @**WebMethod** para alterar o nome do **operation**. Chame a operation de **todosOsItens**.
+
+Lembrando também, depois da cada alteração é preciso republicar o serviço. Como alteramos o nome da operation vai ter um impacto no WSDL e no SOAP gerando. É preciso atualizar o cliente SoapUI!
+
+###### A anotação @**WebMethod** é opcional, por padrão é utilizado o nome do método para a operation no WSDL. 
+
+Caso precise usar um outro nome no WSDL (e consequentemente no SOAP) podemos configurá-lo através da anotação @WebMethod.
+
+**A anotação também serve para excluir um método do contrato WSDL pois por padrão todos os métodos públicos serão utilizados no WSDL.
+@WebMethod(exclude=true)**
+ 
+## Mãos a obra: @WebResult
+Agora, use a anotação **@WebResult(name="itens")** no método **getItens** para personalizar a resposta gerada.
+
+Além disso, altere o retorno do método para **ListaItens**. 
+
+A classe **ListaItens** já existe e deve utilizar as **anotações do JAX-B**:
+
+
+## Mãos a obra: Filtrando resultados
+Na classe **EstoqueWS**, no método **getItens**() coloque um parâmetro para filtrar os dados. 
+
+No projeto já tem um classe **Filtro** e uma outra **Filtros** preparadas para receber os dados da requisição SOAP. 
+
+O DAO também já está preparado para a pesquisa usando os dados do filtro. O método **getItens** fica assim:
+   ```java
+@WebMethod(operationName="todosOsItens")
+    @WebResult(name="itens")
+    public ListaItens getItens(Filtros filtros) { //cuidado, plural
+        System.out.println("Chamando getItens()");
+        List<Filtro> lista = filtros.getLista();
+        List<Item> itensResultado = dao.todosItens(lista);
+        return new ListaItens(itensResultado);
+    }
+```
+Um filtro define um tipo do item (Livro, Celular ou Tablet) e o nome do item. A classe já criada é bem simples:
+```java
+public class Filtro {
+
+    private TipoItem tipo;
+    private String nome;
+
+    //get e sets
+```
+A classe **filtro** é um pequeno wrapper para embrulhar um filtro e deixar o XML mais expressivo:
+```java
+@XmlRootElement()
+@XmlAccessorType(XmlAccessType.FIELD)
+public class Filtros {
+
+    @XmlElement(name="filtro")
+    private List<Filtro> filtros;
+
+    //construtores
+
+    public List<Filtro> getLista() {
+        return filtros;
+    }
+
+}
+```
+Republique o serviço. Atualize o cliente no SoapUI. Se for preciso criar um novo Request abaixo da operação todosOsItens.
+
+Ao atualizar o cliente e criar um novo request o SoapUI gera o XML seguinte. 
+
+Dentro do elemento **ws:todosOsItens** encontramos agora um novo com o pouco expressivo de **arg0**. 
+
+Esse **arg0** são os filtros e pode ter outros elementos:
+```xml
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ws="http://ws.estoque.caelum.com.br/">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <ws:todosOsItens>
+         <!--Optional:-->
+         <arg0>
+            <!--Zero or more repetitions:-->
+            <filtro>
+               <tipo>?</tipo>
+               <nome>?</nome>
+            </filtro>
+         </arg0>
+      </ws:todosOsItens>
+   </soapenv:Body>
+</soapenv:Envelope>
+```
+Basta colocar um valor no filtro para pesquisar pelo nome e tipo, por exemplo:
+```xml
+<arg0>
+         <filtro>
+            <!--Optional:-->
+            <tipo>Celular</tipo>
+            <!--Optional:-->
+            <nome>Moto</nome>
+         </filtro>
+</arg0>
+```
+Você também pode repetir o elemento filtro, por exemplo:
+```xml
+<arg0>
+         <filtro>
+            <!--Optional:-->
+            <tipo>Celular</tipo>
+            <!--Optional:-->
+            <nome>Moto</nome>
+         </filtro>
+         <filtro>
+            <!--Optional:-->
+            <tipo>Celular</tipo>
+            <!--Optional:-->
+            <nome>IP</nome>
+         </filtro>
+ </arg0>
+```
+Agora, o que você acha de um elemento no XML que se chama arg0?
+
+Chamar algum elemento de **arg0** com certeza vai confundir os nossos clientes! No próximo exercício vamos melhorar o nome para deixar o XML mais expressivo sempre pensando na melhor interface (WSDL) possível.
+ 
+## Mãos a obra: Filtrando resultados 2
+Na classe **EstoqueWS**, no método **getItens**() coloque** um parâmetro para filtrar os dados**. 
+
+No projeto já tem um classe **Filtro** e uma outra **Filtros** preparadas para receber os dados da requisição SOAP. 
+O DAO também já está preparado para a pesquisa usando os dados do filtro. O método **getItens** fica assim:
+ ```java
+  @WebMethod(operationName="todosOsItens")
+    @WebResult(name="itens")
+    public ListaItens getItens(Filtros filtros) { //cuidado, plural
+        System.out.println("Chamando getItens()");
+        List<Filtro> lista = filtros.getLista();
+        List<Item> itensResultado = dao.todosItens(lista);
+        return new ListaItens(itensResultado);
+    }
+```
+Um filtro define um tipo do item (Livro, Celular ou Tablet) e o nome do item. A classe já criada é bem simples:
+```java
+public class Filtro {
+
+    private TipoItem tipo;
+    private String nome;
+
+    //get e sets
+```
+A classe **filtro** é um pequeno wrapper para embrulhar um filtro e deixar o XML mais expressivo:
+```java
+@XmlRootElement()
+@XmlAccessorType(XmlAccessType.FIELD)
+public class Filtros {
+
+    @XmlElement(name="filtro")
+    private List<Filtro> filtros;
+
+    //construtores
+
+    public List<Filtro> getLista() {
+        return filtros;
+    }
+
+}
+```
+## Mãos a obra: @WebParam no método getItens
+Vamos deixar o WSDL e SOAP mais expressivo. Use a anotação **@WebParam** no método **getItens** que recebe o nome do parâmetro:
+  ```java
+ @WebMethod(operationName="todosOsItens") 
+    @WebResult(name="itens")
+    public ListaItens getItens(@WebParam(name="filtros") Filtros filtros) {
+        System.out.println("Chamando getItens()");
+        List<Filtro> lista = filtros.getLista();
+        List<Item> itensResultado = dao.todosItens(lista);
+        return new ListaItens(itensResultado);
+    }
+```
+Republique o serviço e atualize o SoapUI. Gere um novo request, **repare que o XML SOAP não possui mais o elemento arg0**:
+```xml
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ws="http://ws.estoque.caelum.com.br/">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <ws:todosOsItens>
+         <!--Optional:-->
+         <filtros>
+            <!--Zero or more repetitions:-->
+            <filtro>
+               <tipo>?</tipo>
+               <nome>?</nome>
+            </filtro>
+         </filtros>
+      </ws:todosOsItens>
+   </soapenv:Body>
+</soapenv:Envelope>
+```
+Como já falamos, sempre coloque-se no posição do seu cliente. Provavelmente ele não tem a classe Java da implementação do serviço, então não sabe dos detalhes da implementação. Mostrando variáveis sem sentido ou abreviadas vão dificultar o desenvolvimento e a integração.
+ 
+## ResponseWrapper
+Antes de conhecermos JAX-B, nosso método **getItens** devolvia uma **List<Item>**. 
+
+O problema dessa abordagem é que cada **item** da lista era representado por um elemento **return** que deixava o XML da resposta SOAP pouco expressivo. 
+
+Resolvemos então esse problema usando a classe **ListaItens**. Dessa forma, para que quando realizarmos uma requisição SOAP em busca dos itens, recebemos como resposta algo como:
+```xml
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+   <S:Body>
+      <ns2:todosOsItensResponse xmlns:ns2="http://ws.estoque.com.br/">
+         <itens>
+            <item>
+               <codigo>MEA</codigo>
+               <nome>MEAN</nome>
+               <quantidade>5</quantidade>
+               <tipo>Livro</tipo>
+            </item>
+            <!-- outros itens omitidos -->
+         </itens>
+      </ns2:todosOsItensResponse>
+   </S:Body>
+</S:Envelope>
+```
+
+Podemos ver no XML que há ainda uma outra tag que está envolvendo nossa lista de itens: 
+
+    <ns2:todosOsItensResponse>
+Isso ocorre porque nosso SOAP usa **o padrão Wrapped** (embrulhado) que estudaremos mais a frente. 
+
+Por enquanto, basta sabermos que essa TAG é usada para indicar de **qual método veio essa resposta**. 
+
+No nosso caso, do método **todosItens** anotado com **@WebMethod(operationName="todosOsItens")**.
+
+Podemos aproveitar essa tag para envolver nossos itens, em vez de usarmos a classe **ListaItem**. Basta customizarmos o nome da tag usando **@ResponseWrapper** passando no atributo **localName** o novo nome da tag (itens).
+
+Como ficaria o método getItens usando **@ResponseWrapper **?
+O primeiro passo é usar a anotação **@ResponseWrapper(localName="itens")** no método **getItens** para redefinir o nome do elemento que embrulha a mensagem:
+```xml
+@WebMethod(operationName="todosOsItens")
+@ResponseWrapper(localName="itens")
+@WebResult(name="itens")
+public ListaItens getItens() { 
+
+    System.out.println("Chamando getItens()");
+    return dao.todosItens();
+
+}
+```
+Segundo, **não precisamos mais devolver uma instância de ListaItens**. 
+
+Portanto, voltaremos a devolver uma **List<Item>** onde cada item deverá ser representado pela tag <item> usando
+```java
+@WebResult(name="item"):
+@WebMethod(operationName="todosOsItens")
+@ResponseWrapper(localName="itens")
+@WebResult(name="item")
+public List<Item> getItens() { 
+
+    System.out.println("Chamando getItens()");
+    return dao.todosItens();
+
+}
+```
+ 
+## RequestWrapper
+Aquele Wrapper visto no exercício anterior não só existe na resposta como também na requisição! Experimente a anotação **@RequestWrapper(localName="listaItens")** no método **getItens**.
+
+O nosso método já é um belo festival de anotações:
+
+```java
+@WebMethod(operationName="todosOsItens")
+@ResponseWrapper(localName="itens")
+@WebResult(name="item")
+@RequestWrapper(localName="listaItens")
+public ListaItens getItens(@WebParam(name="filtros") Filtros filtros){
+
+        List<Filtro> lista = filtros.getLista();
+        List<Item> result = dao.todosItens(lista);
+        return new ListaItens(result);
+}
+```
+E o SOAP gerado:
+```xml
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ws="http://ws.estoque.caelum.com.br/">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <ws:listaItens />
+   </soapenv:Body>
+</soapenv:Envelope>
+```
+ 
 
 
 
