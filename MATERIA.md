@@ -306,6 +306,39 @@ Após ter baixado e instalado o SoapUI podemos criar um novo projeto do tipo SOA
 4) Abra o elemento **Request 1** abaixo do elemento **todosItens**.
 5) Execute a requisição SOAP!
 
+## Para saber mais: O namespace no XML do SOAP
+Veja a mensagem SOAP do request:
+```xml
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ws="http://ws.estoque.com.br/">
+   <soapenv:Header></soapenv:Header>
+   <soapenv:Body>
+      <ws:todosItens></ws:todosItens>
+   </soapenv:Body>
+</soapenv:Envelope>
+```
+No primeiro elemento do XML (Envelope) temos a definições de duas URLs:
+**xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"**
+**xmlns:ws="http://ws.estoque.com.br/"**
+
+As duas definições são mais do que URLs, elas são namespaces!
+xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+xmlns:ws="http://ws.estoque.com.br/"
+
+###### Um **namespace** é parecido com o **package** do mundo Java e ajuda distinguir elementos e evitar conflitos de nomes. 
+
+O primeiro namespace define os elementos **padrão do SOAP** como Envelope e Body. 
+
+O segundo serve para **usar os elementos do nosso modelo como o item**.
+
+Além disso, o** primeiro namespace** indica que estamos usando **SOAP na versão 1.1** (não muito explícito mas se fosse SOAP 1.2 seria o namespace http://www.w3.org/2003/05/soap-envelope - acreditem!).
+
+Repare também que cada namespace define um **prefixo**. 
+
+O primeiro usa **soapenv**, o segundo **ws**. 
+
+**Os prefixo são úteis para referenciar o namespace dentro da mensagem XML.** Ou seja, cada vez que encontramos ws: na verdade queremos dizer http://ws.estoque.com.br/.
+
+Você deve estar um pouco inseguro com o mundo XML. O mundo XML pode ser complexo mas com tempo e prática as coisas vão se encaixar melhor.
 
 
 
