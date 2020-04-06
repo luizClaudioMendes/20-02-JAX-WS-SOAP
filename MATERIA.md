@@ -1718,6 +1718,379 @@ Esse foi um desafio interessante. Se você já tem uma certa experiência com Ja
 Te vejo no próximo capítulo (:
 
 
+## WSDL abstrato e concreto
+## Revisão
+No último capítulo vimos como trabalhar com cabeçalhos e exceções na mensagem SOAP. 
+
+Personalizamos ambos usando as anotações disponíveis no JAX-WS. 
+
+Para criar um cabeçalho da mensagem SOAP basta adicionar um parâmetro no método e declará-lo com **@WebParam(header=true)**. 
+
+Vimos que os cabeçalhos são úteis para declarar meta informações como auditoria, dados da transação e autenticação e autorização. 
+
+Muitas vezes os dados nos cabeçalhos são processados pelos intermediários entre cliente e servidor. Pode ter vários desses intermediários ou SOAP Nodes que realmente usam esses cabeçalhos.
+
+Também vimos como o SOAP trabalha com exceções. Para ser correto os SOAP chama as exceções do mundo Java de Fault. Então é preciso traduzir as exceções para os Faults do mundo SOAP. As exceções checked automaticamente fazem parte do contrato, ou seja, fazem parte do WSDL. As exceções unchecked serão traduzidos para um Fault padrão.
+
+Neste capítulo veremos mais detalhes sobre o contrato e vamos falar sobre as seções **types**, **message** e **portType** do WSDL.
+
+## Definição dos tipos
+Já falamos bastante e sobre o WSDL, vamos dar uma olhada com mais detalhes nas seções do WSDL. 
+
+A primeira seção são os **tipos usados no contrato (< types>)**. 
+
+São aqueles definições do XSD. Este define como, por exemplo, se compor um item ou como se define aquele token do usuário. 
+
+O XSD define também as regras de validação e é bastante rico nesse sentido. Esse arquivo até pode ser utilizado separadamente para validar um item ou o payload (os dados principais) da mensagem SOAP! 
+
+Exemplo do item no XSD:
+```xml
+<xs:simpleType name="tipoItem">
+    <xs:restriction base="xs:string">
+        <xs:enumeration value="Livro"></xs:enumeration>
+        <xs:enumeration value="Celular"></xs:enumeration>
+        <xs:enumeration value="Tablet"></xs:enumeration>
+    </xs:restriction>
+</xs:simpleType>
+```
+Podemos dizer, que tudo que está trafegando dentro de uma mensagem SOAP deve estar declarado de alguma forma no XSD. 
+
+Em geral, qualquer serviço expõe um modelo, e no mundo SOAP este modelo está definido o XSD!
+
+
+## Mensagens no WSDL
+A segunda parte do WSDL são as mensagens. 
+
+As mensagens se baseiam no XSD e cada uma representa uma entrada ou saída do serviço. 
+
+Repare o elemento CadastrarItem:
+```xml
+<message name="CadastrarItem">
+    <part name="parameters" element="tns:CadastrarItem"/>
+    <part name="tokenUsuario" element="tns:tokenUsuario"/>
+</message>
+```
+Ele possui duas partes, a primeira é o que vem no corpo da mensagem (no Body), a segunda parte é do cabeçalho (Header). Repare também que nosso Fault faz parte de uma mensagem:
+```xml
+<message name="AutorizacaoFault">
+    <part name="fault" element="tns:AutorizacaoFault"/>
+</message>
+```
+Isso faz sentido já que o Fault também é uma saída.
+
+
+## A interface: o elemento PortType
+Logo após as mensagem, encontramos a seção portType que associa as mensagem a uma operação. 
+
+Repare a operação **TodosOsItens**, ela possui uma entrada e saída, cada uma representada por uma mensagem:
+```xml
+<operation name="TodosOsItens">
+   <input wsam:Action="http://ws.estoque.com.br/EstoqueWS/TodosOsItensRequest" message="tns:TodosOsItens"/>
+  <output wsam:Action="http://ws.estoque.com.br/EstoqueWS/TodosOsItensResponse" message="tns:TodosOsItensResponse"/>
+</operation>
+```
+###### O que importa aqui é o atributo message. 
+
+Nele temos uma referência a mensagem, por exemplo **tns:TodosOsItens**.
+
+O atributo **wsam:Action** é relacionado com o **WS-Addressing** que pode ser útil para chamadas assíncronas, quando queremos devolver a mensagem de resposta para algum outro endereço. O JAX-WS define uma anotação **@Action** para manipular estes valores.
+
+## WSDL abstrato e concreto
+Até agora, nesses elementos do WSDL **não definimos o protocolo concreto a ser utilizado**. Em nenhum momento está escrito que realmente queremos usar o SOAP! Também não tem nenhuma informação sobre o endereço de serviço. Essas definições mais concretas vem na segunda parte do WSDL.
+
+De certa forma o contrato é dividido em duas partes: 
+- A **primeira parte** que já vimos, com as operações, mensagens e tipos que chamamos de **WSDL abstrato**. 
+- A **segunda parte** que terá **definições sobre o protocolo, endereço e codificação das mensagens** chamamos de **WSDL concreto.**
+
+## Visualizando o WSDL
+Para simplificar vamos visualizar o WSDL no Eclipse, mas antes iremos gerar o WSDL a partir da classe.
+
+1- Entre na pasta do projeto e execute:
+**wsgen -wsdl -inlineSchemas -cp bin br.com.estoque.ws.EstoqueWS**
+explicação:
+wsgen [gera um wsdl] [gera no mesmo arquivo os schemas] [classpath - informa onde estao o .class da classe do WS] [pasta onde esta o .class] [nome completo da classe] 
+###### wsgen [gera um wsdl] [gera no mesmo arquivo os schemas] [classpath - informa onde estao o .class da classe do WS] [pasta onde esta o .class] [nome completo da classe] 
+###### para mais informações, digite somente wsgen e aperte ‘enter’.para mais informações, digite somente wsgen e aperte ‘enter’.
+
+Repare que no comando usamos a configuração **inlineSchemas** para criar um arquivo apenas com **XSD** E **WSDL**. 
+
+2- Agora abra o arquivo gerado no Eclipse (JEE)  que possui um editor dedicado ao WSDL:
+
+Podemos ver no lado esquerdo a parte concreta do WSDL e no lado direito a parte abstrata. Entre as duas parte tem uma ligação (binding). 
+
+Repare que a parte abstrata é apresentado como se fosse uma interface Java (usa-se o mesmo símbolo). Claro que não é Java e sim XML, mas trata-se do contrato do serviço.
+
+O editor possui algumas funções para editar e refatorar os dados do serviço, no entanto devemos ter em mente que o WSDL publicado pelo serviço não é criado ao vivo, na hora de rodar o serviço.
+
+No próximo capítulo vamos focar no WSDL concreto mas agora é a hora dos exercícios.
+
+
+## O que você aprendeu neste capítulo?
+- existe uma parte abstrata e concreto no WSDL
+- a parte abstrata é parecido com uma interface
+- a parte concreta é para definir o protocolo e endereço
+- a parte abstrata define os tipos, mensagens e operações
+- a interface no WSDL se chama portType
+- podemos usar wsgen para gerar o arquivo WSDL
+ 
+Qual é o papel do XSD?
+Vimos que dentro do WSDL tem um elemento < type> que contém algo que se chama de XSD.
+
+Qual é o papel do XSD na definição do serviço?
+O XSD ou XML Schema ou apenas Schema descreve a estrutura de um documento XML. O XSD define como se compor uma mensagem SOAP, o que pode aparecer no XML, quantas vezes, quais tipos, nomenclatura etc. 
+
+Segue um exemplo do token do usuário no XSD:
+     
+
+    <xs:complexType name="tokenUsuario">
+            <xs:sequence>
+              <xs:element name="token" type="xs:string"></xs:element>
+              <xs:element name="dataValidade" type="xs:dateTime"></xs:element>
+            </xs:sequence>
+          </xs:complexType>
+		  
+Repare que o elemento **token** é uma **string** e o elemento **dataValidade** é um **dateTime**. Ambos elementos definem uma sequência, o tokenUsuario.
+
+O interessante é que o XSD também é um XML :)
+
+O que as mensagens no WSDL representam?
+O elemento < **message**> descreve os dados a serem trocados entre cliente e servidor. Ou seja, cada mensagem representa uma entrada ou saída.
+Dentro de um elemento < **message**> vem os **part** que associam um tipo concreto do XSD. 
+
+Por exemplo:
+
+
+    <message name="AutorizacaoFault">
+        <part name="fault" element="tns:AutorizacaoFault"/>
+    </message>
+	
+Quais elementos fazem parte do WSDL?
+Os elementos que definem o WSDL abstrato são: < types>, < message> e < portType>. 
+Os elementos que definem o WSDL concreto são: < binding> e < service>.
+
+###### Concreto significa que há informações sobre o encoding (veremos no próximo capítulo), sobre o protocolo e o endereço do serviço.
+
+
+Baseado no conteúdo desse capítulo, qual é a responsabilidade do elemento < portType>?
+**O < portType> é parecido com uma interface Java** e define as operações com entrada e saída.
+Veja o exemplo:
+
+
+    <portType name="EstoqueWS">
+      <operation name="TodosOsItens">
+        <input  message="tns:TodosOsItens"/>
+        <output message="tns:TodosOsItensResponse"/>
+      </operation>
+    </portType>
+Um < portType> pode ter várias operations e para ser correto, nem sempre uma operação precisa ter entrada E saída. Por exemplo o < portType> abaixo é válido:
+
+
+    <portType>
+      <operation name="CadastrarItem" parameterOrder="parameters tokenUsuario">
+         <input wsam:Action="CadastrarItem" message="tns:CadastrarItem"/>
+      </operation>
+    </portType>
+Nesse caso o serviço SOAP vai ter apenas uma mensagem de ida, sem retorno. O retorno será apenas no nível do protocolo HTTP, sem ter uma mensagem SOAP.
+ 
+## Mãos a obra: Gerando o WSDL
+Vamos gerar o arquivo WSDL a partir da nossa implementação. Para este exercício você precisa ter o JDK instalado.
+###### 1) Abra um terminal e vá para a pasta do seu projeto, algo: cd C:\workspace\estoquews
+###### 2) Execute o comando wsgen:
+**wsgen -wsdl -cp bin br.com.estoque.ws.EstoqueWS**
+O **-wsdl** é para gerar o arquivo WSDL e o **-cp** para definir o local das classes compiladas.
+###### 3) Atualize o projeto estoquews no Eclipse e abra o arquivo pelo Eclipse (j2ee). 
+Repare que temos o elemento service no lado esquerdo e o portType no lado direito. O elemento binding é a ligação entre os dois.
+###### 4) Também teste a opção -inlineSchemas do comando wsgen:
+**wsgen -wsdl -inlineSchemas -cp bin br.com.caelum.estoque.ws.EstoqueWS**
+Através do editor WSDL no Eclipse podemos alterar os elementos, adicionar mais documentação, criar novos elementos como service ou binding entre várias outras possibilidades. 
+
+No entanto, faz sentido alterar o WSDL que é gerado a partir de uma classe?
+
+
+## (Opcional) Gerando XML com JAX-B
+Com JAX-B podemos facilmente ler e escrever um XML. Você pode testar isso com o nosso Item. A única configuração obrigatória é a anotação **@XmlRootElement:**
+
+
+    @XmlRootElement
+    @XmlAccessorType(XmlAccessType.FIELD) //essa anotação já existia
+    public class Item {
+       //resto da classe omitido
+
+A partir daí pode escrever (marshal) o XML:
+
+
+    public class TesteItemParaXML {
+    
+        public static void main(String[] args) throws JAXBException {
+            Item item = new Item.Builder().comCodigo("MEA").comNome("MEAN").comQuantidade(4).comTipo("Livro").build();
+    
+            JAXBContext context = JAXBContext.newInstance(Item.class);
+            Marshaller marshaller = context.createMarshaller();
+            marshaller.marshal(item, new File("item.xml")); //ou marshaller.marshal(item, System.out);        
+        }
+    
+    }
+###### Para ler um XML basta usar um Unmarshaller.
+
+Ainda não foi suficiente sobre o JAX-B? Temos um artigo no blog da Caelum que mostra como gerar as classes a partir do XSD:
+http://blog.caelum.com.br/jaxb-xml-e-java-de-maos-dadas/
+Boa leitura :)
+> ## JAXB – XML e Java de mãos dadas
+Você já participou de um projeto que precisou ler um arquivo de configuração em xml? Já precisou consumir um xml e transformá-lo em objeto? O que você usou? Quem já trabalhou com xml sabe da dificuldade que podemos encontrar pelo caminho, e é esse tipo de dificuldade que a especificação **Java Architecture for XML Binding** ou simplesmente **JAXB** tenta resolver.
+
+> Imagine a seguinte situação: Precisarmos enviar os dados contidos em um objeto para um outro servidor. Temos muitas opções para fazer o envio, como por exemplo colocar essas informações em um arquivo de texto seguindo uma máscara pré-definida. Porém apenas as aplicações que conhecessem essa máscara entenderiam os dados, e perdemos portabilidade. 
+###### Usando xml a situação já é outra: qualquer aplicação, independende de linguagem, entenderá os dados contidos no arquivo xml.
+
+> Antes de falarmos sobre o JAXB vamos primeiro conferir alguns conceitos:
+
+> ## XML
+**XML** é uma linguagem de marcação que **serve para guardar dados de uma forma estruturada**. Essa estrutura é definida pelo próprio usuário ou por um schema. Um xml é um arquivo de texto puro, portanto independente de plataforma, por isso é muito utilizado para transmitir dados entre diferentes aplicações e sistemas. 
+Exemplo:
+carro.xml
+
+    <?xml version="1.0" encoding="UTF-8"?>
+    <carro>
+      <nome>Fusca</nome>
+      <portas>2</portas>
+      <motoristas>
+        <motorista>
+          <nome>Guilherme</nome>
+        </motorista>
+        <motorista>
+          <nome>Leonardo</nome>
+        </motorista>
+      </motoristas>
+    </carro>
+
+> ## XSD
+**XSD** é o **schema** citado na seção anterior, ele **define quais são as regras que a estrutura do xml** deve seguir, possibilitando a validação desse xml. 
+
+Exemplo:
+
+    <?xml version="1.0" encoding="UTF-8"?>
+    <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+      <xsd:element name="carro" type="Carro" />
+      <xsd:complexType name="Carro">
+        <xsd:sequence>
+          <xsd:element name="nome" type="xsd:string" minOccurs="1"
+            maxOccurs="1" nillable="false"/>
+          <xsd:element name="portas" type="xsd:int" minOccurs="1"
+            maxOccurs="1" nillable="false"/>
+          <xsd:element name="motoristas" type="Motorista" minOccurs="0"
+            maxOccurs="unbounded"/>
+        </xsd:sequence>
+      </xsd:complexType>
+      <xsd:complexType name="Motorista">
+        <xsd:sequence>
+          <xsd:element name="nome" minOccurs="1" maxOccurs="1"
+            type="xsd:string" nillable="false"/>
+        </xsd:sequence>
+      </xsd:complexType>
+    </xsd:schema>
+> O primeiro ponto da especificação apresenta uma ferramenta chamada **Binding Compiler**, cuja função é** transformar um xsd em um conjunto de classes que tenham uma estrutura compatível com a estrutura do xml que esse xsd define**.
+
+> No XSD de exemplo definimos a seguinte estrutura: Um elemento carro deve ter um elemento nome e um elemento motoristas (do tipo Motorista), seguindo essa ordem, primeiro nome e depois motoristas. Depois definimos o tipo Motorista que deve conter apenas um nome.
+
+> O **Binding Compiler** é independente da implementação do JAXB, ou seja, quem define como ele será executado é quem implementa a especificação, porém a maioria e inclusive a própria RI(**Reference Implementation**) cria um comando que pode ser chamado pela linha de comando do Sistema Operacional, o **xjc**. 
+Por exemplo no Linux:
+
+> ###### xjc carro.xsd -d src -p br.com.caelum
+
+> Se você já está usando o **Java 6**, o **JAXB já vêm junto com o JDK**.
+
+> Com esse comando o Binding Compiler gera três classes: **Carro.java**, **Motorista.java** e a **ObjectFactory.java**. As classes Carro e Motorista seguem a estrutura do xsd.
+
+> ## Gerando e Lendo XML
+A segunda parte da especificação define **o que temos que fazer para transformar objetos em xml e vice-versa**. A API do JAXB é quem se responsabiliza por essas transformações.
+
+> ## Transformando objetos em xml
+O processo de transformar um objeto em xml é chamado de **Marshal**. Com o JAXB para transformar um objeto em xml precisamos de um **JAXBContext**, esse context é quem fornecerá o **Marshaller**. 
+
+> O Marshaller é quem finalmente transforma um objeto (**JAXBElement**) em xml. O **JAXBElement** contém o objeto de verdade a ser serializado e algumas propriedades do xml. É aqui que entra a importância do ObjectFactory criado pelo Binding Compiler, ele é responsável por criar uma instância do JAXBElement apropriada para o tipo de objeto a ser serializado.
+
+    JAXBContext context = JAXBContext.newInstance("br.com.caelum");
+    Marshaller marshaller = context.createMarshaller();
+    JAXBElement<Carro> element = new ObjectFactory().createCarro(carro);
+    marshaller.marshal(element, System.out);
+	
+> ## Parseando xml em objetos java
+Para fazer o caminho contrário, ou seja popular um objeto java com dados de um xml também precisamos de um **JAXBContext**, porém agora temos que pegar um **Unmarshaller**. 
+
+> ###### O Unmarshaller recebe um arquivo xml e devolve um JAXBElement contendo um objeto populado.
+
+
+
+    JAXBContext context = JAXBContext.newInstance("br.com.caelum");
+    Unmarshaller unmarshaller = context.createUnmarshaller();
+    JAXBElement<Carro> element = (JAXBElement<Carro>) unmarshaller.unmarshal(new File("resources/carro.xml"));
+    Carro carro = element.getValue();
+	
+	
+> ## Conclusão
+###### O JAXB facilita muito a vida dos programadores java, fazendo o consumo e criação de xml menos trabalhosos. Essa API também fornece outros recursos como, validação, geração de schema (a partir de classes java, cria um xsd), opções para trabalhar com Namespace e etc. Comente nesse post outras oções do JAXB e outras bibliotecas que você usa no seu dia-a-dia.O JAXB facilita muito a vida dos programadores java, fazendo o consumo e criação de xml menos trabalhosos. Essa API também fornece outros recursos como, validação, geração de schema (a partir de classes java, cria um xsd), opções para trabalhar com Namespace e etc. Comente nesse post outras oções do JAXB e outras bibliotecas que você usa no seu dia-a-dia.
+
+## (Para saber mais) Serviços com @Oneway
+Como já vimos, ao criar um serviço SOAP estamos seguindo o padrão de requisição e resposta. Ou seja, o serviço recebe a requisição e o cliente aguarda pacientemente o seu processamento para receber uma resposta.
+
+O problema é que em alguns casos não precisamos receber nenhuma resposta do serviço, **apenas queremos enviar alguma informação** para um serviço de auditoria ou pedir um relatório para um gerador de PDF ou fazer alguma notificação por e-mail.
+
+Nesses casos, esperar pelo processamento da requisição torna-se inviável (pelo fato de que outros serviços externos, também estão envolvidos) e desnecessário.
+
+Neste caso, o que queremos é criar um serviço de "mão única". 
+
+Deixando claro aos clientes que esse serviço não terá resposta e que ele não precisará esperar pelo processamento da requisição.
+
+###### Fazemos isso anotando o método (de retorno void) com @Oneway.
+
+Faça um teste e verifique o que mudou no WSDL após inserir essa anotação.
+
+Vamos usar por exemplo o serviço abaixo:
+```java
+@WebService
+public class RelatorioService {
+
+    @WebMethod(operationName="GerarRelatorio")
+    public void gerarRelatorio() { 
+        // código omitido
+    }
+}
+```
+Como já vimos, as mensagens usadas no serviço são declaradas no WSDL pela seção < message>. 
+
+E por padrão, há no mínimo duas mensagens: uma para requisição e outra para resposta.
+
+
+    <message name="GerarRelatorio">
+        <part name="parameters" element="tns:GerarRelatorio"/>
+    </message>
+    <message name="GerarRelatorioResponse">
+        <part name="parameters" element="tns:GerarRelatorioResponse"/>
+    </message>
+E na seção < operation>, dizemos quais mensagens serão usadas e se elas são de entrada e saída.
+
+
+    <operation name="GerarRelatorio">
+        <input wsam:Action="http://ws.caelum.com.br/RelatorioService/GerarRelatorioRequest" message="tns:GerarRelatorio"/>
+        <output wsam:Action="http://ws.caelum.com.br/RelatorioService/GerarRelatorioResponse" message="tns:GerarRelatorioResponse"/>
+    </operation>
+Ao anotarmos o método com **@Oneway** não teremos mais uma mensagem de saída, já que o serviço deixa de ter resposta:
+```java
+@Oneway
+@WebMethod(operationName="GerarRelatorio")
+public void gerarRelatorio() { 
+    // código omitido
+}
+```
+```xml
+<message name="GerarRelatorio">
+    <part name="parameters" element="tns:GerarRelatorio"/>
+</message>
+<portType name="RelatorioService">
+    <operation name="GerarRelatorio">
+        <input wsam:Action="http://ws.caelum.com.br/RelatorioService/GerarRelatorio" message="tns:GerarRelatorio"/>
+    </operation>
+</portType>
+```
 
 
 
