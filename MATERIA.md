@@ -865,7 +865,7 @@ public ListaItens getItens(@WebParam(name="filtros") Filtros filtros){
 ```
 E o SOAP gerado:
 ```xml
-<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ws="http://ws.estoque.caelum.com.br/">
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ws="http://ws.estoque.com.br/">
    <soapenv:Header/>
    <soapenv:Body>
       <ws:listaItens />
@@ -873,6 +873,849 @@ E o SOAP gerado:
 </soapenv:Envelope>
 ```
  
+## Trabalhando com cabeçalhos
+
+## Revisão
+No último capítulo vimos como personalizar as mensagens SOAP a partir das anotações do JAX-B e JAX-WS. 
+
+Vimos que os **métodos** do mundo Java** se tornam operations** e os **parâmetros** e **retornos** são **as mensagens no WSDL**. 
+
+Essas operations fazem parte de um elemento chamado **portType**. 
+
+De certa forma, a classe Java é traduzida para XML.
+
+
+## Nova funcionalidade: Cadastrar itens
+Vamos aumentar um pouco as possibilidades do nosso serviço e criar uma nova funcionalidade de cadastrar itens no sistema. 
+
+Chamaremos o método **cadastrarItem** que recebe o Item a cadastrar como parâmetro. 
+
+Na classe **EstoqueWS** adicionaremos:
+```java
+public Item cadastrarItem(Item item) {
+  System.out.println("Cadastrando " + item);
+  this.dao.cadastrar(item);
+  return item;
+}
+```
+Estamos retornando o mesmo item. Parece que não faz sentido, mas normalmente esse item ganha a ID do banco de dados. E ao retorná-lo estamos informando essa ID. 
+
+Como já fizemos antes, vamos deixar o WSDL mais expressivo usando as anotações **@WebMethod, @WebParam e @WebResult**:
+
+```java
+@WebMethod(operationName="CadastrarItem") 
+@WebResult(name="item")
+public Item cadastrarItem(@WebParam(name="item") Item item) {
+  System.out.println("Cadastrando " + item);
+  this.dao.cadastrar(item);
+  return item;
+}
+```
+Já podemos publicar o serviço e testar o resultado:
+http://localhost:8080/estoquews?wsdl
+
+Repare que no elemento portType aparece mais uma operation:
+```xml
+<portType name="EstoqueWS">
+  <operation name="TodosOsItens">
+     <input wsam:Action="http://ws.estoque.caelum.com.br/EstoqueWS/TodosOsItensRequest" message="tns:TodosOsItens"/>
+     <output wsam:Action="http://ws.estoque.caelum.com.br/EstoqueWS/TodosOsItensResponse" message="tns:TodosOsItensResponse"/>
+  </operation>
+  <operation name="CadastrarItem">
+     <input wsam:Action="http://ws.estoque.caelum.com.br/EstoqueWS/CadastrarItemRequest" message="tns:CadastrarItem"/>
+     <output wsam:Action="http://ws.estoque.caelum.com.br/EstoqueWS/CadastrarItemResponse" message="tns:CadastrarItemResponse"/>
+  </operation>
+</portType>
+```
+
+## Trabalhando com cabeçalhos
+Para cadastrar um novo item no nosso sistema é preciso se autenticar. Podemos pensar que há uma auditoria automática quando alguém altera um dado no sistema e por isso devemos saber quem está solicitando a alteração. Para nosso exemplo não importa muito como a administração de usuários funciona, mas na web é muito comum que um usuário seja identificado através de um token. 
+
+Um **token** é nada mais do que um **hash gerado para um cliente**. 
+
+No mundo Java Web existe o **JSESSIONID** que representa um token utilizado em aplicações Web. 
+
+O padrão de autenticação e autorização OAuth também usa um token. 
+
+Enfim, o nosso sistema não vai reinventar a roda e também usará um token!
+
+No nosso sistema já temos uma classe preparada para este objetivo, chamada **TokenUsuario**:
+```java
+public class TokenUsuario {
+
+  private String token;
+  private Date dataValidade;
+
+  //get e set
+```
+Queremos receber o token do usuário na requisição SOAP que cadastra um item, mas será que faz sentido misturar os dados do item e o token do usuário? 
+
+Normalmente não faz e o SOAP já propõe uma forma de separar esses dados. 
+
+Já vimos que existe para tal o elemento **Header**. 
+
+Se usarmos ele, a mensagem SOAP deve ficar parecida com a abaixo:
+```xml
+<soapenv:Envelope ...>
+ <soapenv:Header>
+   <tokenUsuario>
+       <dataValidade>2015-08-30T00:00:00</dataValidade>
+       <token>123131AF!@DF12334a</token>
+   </tokenUsuario>
+   <soapenv:Header>
+   <soapenv:Body>
+        <!-- body com o item omitido -->
+   </soapenv:Body>
+</soapenv:Envelope>
+```
+###### Para adicionar um elemento no Header, basta criar mais um parâmetro no método cadastrarItem e configurá-lo com a anotação @WebParam. 
+
+A anotação possui um atributo header que indica que o parâmetro deve ser adicionado ao cabeçalho:
+```java
+@WebMethod(operationName="CadastrarItem") 
+@WebResult(name="item")
+public Item cadastrarItem(@WebParam(name="tokenUsuario", header=true) TokenUsuario token, @WebParam(name="item") Item item) {
+  System.out.println("Cadastrando " + item + ", " + token);//imprimindo o token tbm
+  this.dao.cadastrar(item);
+  return item;
+}
+```
+Ao alterar a classe **EstoqueWS** e rodar o serviço, não há mudanças no portType e sim no elemento **binding**. 
+
+O binding define detalhes sobre a codificação dos dados e como se monta a mensagem SOAP. 
+
+Nessa seção do WSDL está definido que usaremos o protocolo HTTP por baixo dos panos, entre várias outras configurações como Document e literal. 
+
+No próximo capítulo veremos mais sobre elas. O que importa agora é o input da operation **CadastrarItem**, lá está definido que há um soap:header:
+```xml
+<!-- seção bindings-->
+<operation name="CadastrarItem">
+   <soap:operation soapAction=""/>
+    <input>
+       <soap:body use="literal" parts="parameters"/>
+       <soap:header message="tns:CadastrarItem" part="tokenUsuario" use="literal"/>
+     </input>
+     <output>
+       <soap:body use="literal"/>
+    </output>
+</operation>
+```
+
+## Testando o Header
+Vamos atualizar o SoapUI e criar um novo request, nele já deve aparecer o Header. 
+
+Abaixo um exemplo do request já com dados preenchidos:
+```xml
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ws="http://ws.estoque.caelum.com.br/">
+   <soapenv:Header>
+      <ws:tokenUsuario>
+         <token>AAA</token>
+         <dataValidade>2015-12-31T00:00:00</dataValidade>
+      </ws:tokenUsuario>
+   </soapenv:Header>
+   <soapenv:Body>
+      <ws:CadastrarItem>
+         <item>
+            <codigo>MEA</codigo>
+            <nome>MEAN</nome>
+            <tipo>Livro</tipo>
+            <quantidade>5</quantidade>
+         </item>
+      </ws:CadastrarItem>
+   </soapenv:Body>
+</soapenv:Envelope>
+```
+Ao submeter, podemos ver no console do Eclipse, o token do usuário.
+###### TokenUsuario [token=AAA, dataValidade=Thu Dec 31 00:00:00 BRST 2015]TokenUsuario [token=AAA, dataValidade=Thu Dec 31 00:00:00 BRST 2015]
+
+## Verificando o token
+Um vez que recebemos o token do usuário vamos verificar a validade do token. Em ambientes que são puramente baseados em serviços poderia ter um outro serviço com a responsabilidade de administrar usuários. 
+
+Ainda não sabemos como chamar um serviço SOAP a partir do código Java, por isso preparamos no nosso sistema uma classe DAO que recebe o token e verifica a existência e validade dele. 
+
+Vamos pensar que nossa aplicação administra os usuários e os tokens. Portanto, não é preciso chamar um serviço externo, ok?
+
+A classe **TokenDao** possui apenas um método, *ehValido*, que recebe o token do usuário:
+```java
+public class TokenDao {
+
+  public boolean ehValido(TokenUsuario usuario) {
+    return //devolve true ou false
+  }
+```
+No método *cadastrarItem* do serviço chamaremos o método *ehValido*:
+ ```java
+@WebMethod(operationName="CadastrarItem") 
+ @WebResult(name="item")
+  public Item cadastrarItem(@WebParam(name="tokenUsuario", header=true) TokenUsuario token, @WebParam(name="item") Item item) {
+
+    System.out.println("Cadastrando " + item + ", " + token);
+
+    //novo
+    boolean valido = new TokenDao().ehValido(token); //o que faremos se o token for invalido? 
+
+    this.dao.cadastrar(item);
+    return item;
+  }
+```
+
+A pergunta que não quer calar é: O que faremos se o token for inválido? 
+
+Com certeza, não tem como continuar com a execução. Como falamos antes, devemos saber quem está acessando para cadastrar um item no estoque. Isso parece ser um momento bom para interromper o fluxo comum e jogar uma exceção.
+
+## Trabalhando com exceções
+Se alguém tenta cadastrar um item sem ter um token válido, vamos lançar um exceção. 
+
+Chamaremos a exceção de **AutorizacaoException**:
+```java
+boolean valido = new TokenDao().ehValido(token);
+
+if(!valido) {
+  throw new AutorizacaoException("Token invalido");
+}
+```
+Como a exceção não existe ainda, é preciso criá-la. 
+
+O Eclipse ajuda nesse sentido e cria a classe automaticamente estendendo Exception :
+```java
+public class AutorizacaoException extends Exception {
+
+  //esse numero eh relacionado com a serializacao do java.io mas nao importa nesse contexto
+  private static final long serialVersionUID = 1L;
+
+  public AutorizacaoException(String msg) {
+    super(msg);
+  }
+
+}
+```
+A **AutorizacaoException** é do tipo **checked** e exige um tratamento explícito, por isso o código na classe **EstoqueWS** para de funcionar. 
+
+Vamos adicionar o tratamento na assinatura do método:
+```java
+@WebService()
+public class EstoqueWS {
+
+  private ItemDao dao = new ItemDao(); 
+
+  @WebMethod(operationName="CadastrarItem") 
+  @WebResult(name="item")
+  public Item cadastrarItem(
+    @WebParam(name="tokenUsuario", header=true) TokenUsuario token, 
+    @WebParam(name="item") Item item) throws AutorizacaoException {
+
+  //código omitido
+```
+Repare o throws **AutorizacaoException**, deixamos explícito que pode acontecer uma AutorizacaoException.
+
+## Fault no WSDL
+###### No mundo SOAP não existem exceções e sim Faults. 
+Uma exceção no mundo Java é traduzido para um Fault. Ao publicar o serviço podemos ver no WSDL que há uma nova mensagem com o nome da exceção:
+```xml
+<message name="AutorizacaoException">
+  <part name="fault" element="tns:AutorizacaoException"/>
+</message>
+Essa mensagem é utilizada no elemento portType do WSDL. Além do input e output temos um elemento :
+<portType name="EstoqueWS">
+
+  <!-- operacao TodosOsItens omitida -->
+
+  <operation name="CadastrarItem" parameterOrder="parameters tokenUsuario">
+    <input message="tns:CadastrarItem"/> 
+    <output message="tns:CadastrarItemResponse"/>
+    <fault message="tns:AutorizacaoException" name="AutorizacaoException" >
+  </operation>
+</portType>
+```
+
+## Estrutura de um Fault
+No WSDL um **SoapFault** é também uma mensagem que é associada no **portType** através do elemento fault. 
+
+Vamos testar o serviço e enviar uma mensagem com token errado para causar uma exceção no lado servidor. 
+
+Vamos colocar no elemento token do Header um valor inválido, por exemplo:
+```xml
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ws="http://ws.estoque.caelum.com.br/">
+   <soapenv:Header>
+      <ws:tokenUsuario soapenv:mustUnderstand="1">
+         <token>errado</token>
+         <dataValidade>2015-12-31T00:00:00</dataValidade>
+      </ws:tokenUsuario>
+   </soapenv:Header>
+  <!-- body omitido -->
+</soapenv:Envelope>
+Ao submeter recebemos a resposta com o Fault, isto é, dentro do Body tem agora um Fault:
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+   <S:Body>
+      <S:Fault xmlns:ns4="http://www.w3.org/2003/05/soap-envelope">
+         <faultcode>S:Server</faultcode>
+         <faultstring>Token invalido</faultstring>
+         <detail>
+            <ns2:AutorizacaoException xmlns:ns2="http://ws.estoque.caelum.com.br/">
+               <message>Token invalido</message>
+            </ns2:AutorizacaoException>
+         </detail>
+      </S:Fault>
+   </S:Body>
+</S:Envelope>
+```
+Um **Fault** possui um **faultcode** que indica se o problema foi do **servidor ou do cliente**, o **faultstring** com uma mensagem mais amigável e um **detail** que é a instância da exceção serializada em XML.
+
+## Personalizando Fault
+Como tudo no JAX-WS podemos e devemos personalizar o Fault que tem ainda uma cara de exceção Java, que pode ser algo confuso para outras plataformas. 
+
+A anotação responsável pelo Fault se chama **@WebFault** e deve ser usado no nível da classe. 
+
+Vamos chamar a exceção de **AutorizacaoFault**. Além disso, podemos adicionar um método chamado *getFaultInfo* na nossa classe que será usado pelo JAX-B para definir o conteúdo do elemento detail do Fault:
+```java
+@WebFault(name="AutorizacaoFault")
+public class AutorizacaoException extends Exception {
+
+  private static final long serialVersionUID = 1L;
+
+  public AutorizacaoException(String msg) {
+    super(msg);
+  }
+
+  public String getFaultInfo() {
+    return "Token invalido";
+  }
+}
+```
+Deixamos o getter com uma mensagem fixa, mas poderíamos ter algum atributo que define os detalhes do Fault. 
+
+Ao testar o serviço aparece na resposta SOAP o nome AutorizacaoFault com a informação Token inválido:
+```xml
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+   <S:Body>
+      <S:Fault xmlns:ns4="http://www.w3.org/2003/05/soap-envelope">
+         <faultcode>S:Server</faultcode>
+         <faultstring>Autorizacao falhou</faultstring>
+         <detail>
+            <ns2:AutorizacaoFault xmlns:ns2="http://ws.estoque.com.br/">Token invalido</ns2:AutorizacaoFault>
+         </detail>
+      </S:Fault>
+   </S:Body>
+</S:Envelope>
+```
+Ainda está um pouco inseguro com os Faults do mundo SOAP? 
+
+Isso então é uma boa hora de praticar! Nos exercícios vamos consolidar o aprendizado e veremos com mais detalhes os cabeçalhos e Faults. Mãos a obra!
+
+## O que você aprendeu nesse capítulo?
+- Cabeçalhos servem para guardar informações dados da aplicação
+- O elemento Header vem antes do Body
+- A anotação @WebParam serve para definir o Header
+- Exceptions são mapeadas para Faults
+
+Através do **Header** e **Body** podemos separar as **meta-informações** dos **dados principais**, o que é muito comum em protocolos de comunicação. 
+
+No Body ficam os dados principais da mensagem SOAP. 
+
+Já no Header colocaremos informações de **autenticação/autorização**, **validade da mensagem**, **tempos mínimo de resposta** ou **dados sobre a transação** entre várias outras possibilidades.
+
+Em ambiente SOAP é bem comum trabalharmos com alguns intermediários entre cliente e server que validam os Headers e até os manipulam. Por exemplo, poderíamos ter um intermediário que verifica os dados de autenticação/autorização antes da mensagem chegar no servidor final. Um outro poderia fazer uma auditoria para logar informações importantes do que está sendo feito. Esses intermediários tem até um nome específico no mundo SOAP: nós o chamamos de Node (nó)
+
+## Tipo de Faults
+Quando uma mensagem SOAP está sendo processada e se for encontrado um erro, é preciso comunicar o problema ao cliente.
+
+Como estes podem ser escritos em várias plataformas e linguagens diferentes, deve existir um mecanismo independente de plataforma para comunicação de erros. 
+
+Como vimos, a especificação SOAP define uma maneira padrão e independente de plataforma de descrever o erro dentro da mensagem SOAP usando o elemento Fault.
+
+###### No mundo Java as exceções são mapeadas para Faults. 
+
+O JAX-WS define duas categorias ou tipos de exceções:
+**Modeled** (Modelado) - Para mapear uma exceção explicitamente a partir da lógica de negócios no código Java. As definições desse Fault estão no arquivo WSDL, as falhas SOAP são previstas no WSDL.
+
+**Unmodeled** (Não modelado) - Para mapear uma exceção (normalmente do tipo java.lang.**RuntimeException**) que acontecerá em tempo de execução se alguma lógica falha. Neste caso, as exceções Java são representados como falha SOAP genérico.
+
+## Mãos a obra: Autorização pelo Token
+No exercício anterior criamos um Header através do parâmetro do método *cadastrarItem*(..). Agora vamos validar o token do usuário. 
+
+Para tal já preparamos um DAO que simula a verificação (tudo em memória) e possui alguns tokens pré-cadastrados.
+
+Agora, dentro do método *cadastrarItem*(..) faça um if para testar a validade. Se o token for inválido, lance uma exceção do tipo AutorizacaoException. 
+
+Por exemplo:
+```java
+if(!new TokenDao().ehValido(token)) {
+    throw new AutorizacaoException("Autorizacao falhou");
+}
+```
+Você será obrigado a fazer um tratamento da exceção. Faça um throws da exceção no método *cadastrarItem*(..).
+
+Salve a classe e republique o serviço. 
+
+Atualize o cliente no SoapUI e gere um novo request. 
+
+Na mensagem SOAP deve aparecer o Header com o elemento **tokenUsuario**. Preencha a mensagem, mas com um token inválido:
+```xml
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ws="http://ws.estoque.caelum.com.br/">
+   <soapenv:Header>
+      <ws:tokenUsuario>
+         <!--Optional:-->
+         <token>Nao existe</token>
+         <!--Optional:-->
+         <dataValidade>2015-12-31T00:00:00</dataValidade>
+      </ws:tokenUsuario>
+   </soapenv:Header>
+   <soapenv:Body>
+      <ws:CadastrarItem>
+         <!--Optional:-->
+         <item>
+            <!--Optional:-->
+            <codigo>MEA</codigo>
+            <!--Optional:-->
+            <nome>MEAN</nome>
+            <!--Optional:-->
+            <tipo>Livro</tipo>
+            <quantidade>4</quantidade>
+         </item>
+      </ws:CadastrarItem>
+   </soapenv:Body>
+</soapenv:Envelope>
+```
+Submetendo a mensagem SOAP você deve receber o Fault! Tente também com um token válido (por exemplo AAA).
+
+
+## Como personalizar este Fault?
+Segue uma vez a implementação do método *cadastrarItem*(..):
+```java
+@WebMethod(operationName="CadastrarItem") 
+public Item cadastrarItem(@WebParam(name="tokenUsuario", header=true) TokenUsuario token, @WebParam(name="item") Item item) throws AutorizacaoException{
+
+    System.out.println("Cadastrando " + item + ", " + token);
+
+    if(!new TokenDao().ehValido(token)) {
+        throw new AutorizacaoException("Autorizacao falhou");
+    }
+
+    this.dao.cadastrar(item);
+    return item;
+}
+```
+Para personalizar o Fault definido no WSDL devemos usar a anotação **@WebFault**. Com ela podemos definir o **nome da mensagem** (os dados do Fault são representados através de uma mensagem no WSDL) e** nome do Fault em si**:
+```java
+@WebFault(name="AutorizacaoFault", messageName="AutorizacaoFault")
+public class AutorizacaoException extends Exception {
+
+    private static final long serialVersionUID = 1L;
+
+    public AutorizacaoException(String msg) {
+        super(msg);
+    }
+}
+```
+Submetendo uma mensagem SOAP com token inválido você deve receber um Fault parecido com o abaixo:
+```xml
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+   <S:Body>
+      <S:Fault xmlns:ns4="http://www.w3.org/2003/05/soap-envelope">
+         <faultcode>S:Server</faultcode>
+         <faultstring>Autorizacao falhou</faultstring>
+         <detail>
+            <ns2:AutorizacaoFault xmlns:ns2="http://ws.estoque.com.br/">
+               <message>Autorizacao falhou</message>
+            </ns2:AutorizacaoFault>
+         </detail>
+      </S:Fault>
+   </S:Body>
+</S:Envelope>
+```
+ 
+ 
+## Mãos a obra: Usando o FaultInfo da exceção
+Cada Fault deve ter no mínimo um < faultcode> e < faultstring> mas vimos no vídeo que existe a possibilidade de definir mais detalhes:
+```xml
+<S:Fault xmlns:ns4="http://www.w3.org/2003/05/soap-envelope">
+ <faultcode>S:Server</faultcode>
+ <faultstring>Autorizacao falhou</faultstring>
+ <detail>
+    <ns2:AutorizacaoFault xmlns:ns2="http://ws.estoque.caelum.com.br/">Token invalido</ns2:AutorizacaoFault>
+ </detail>
+</S:Fault>
+```
+Para alterar o conteúdo do elemento < detail> é preciso mexer na exceção. Abre a classe **AutorizacaoException** e crie um novo método* getFaultInfo()*:
+```java
+@WebFault(name="AutorizacaoFault", messageName="AutorizacaoFault")
+public class AutorizacaoException extends Exception {
+
+    private static final long serialVersionUID = 1L;
+
+    public AutorizacaoException(String msg) {
+        super(msg);
+    }
+
+    //novo
+    public String getFaultInfo() {
+        return "Token invalido";
+    }
+}
+```
+Publique o serviço e faça o teste através do SoapUI! Envie um requisição SOAP com um token inválido. Você deve receber um Fault parecido com o acima.
+
+Os nossos clientes vão agradecer se receberem mais detalhes sobre o problema ocorrido no servidor. Vamos agradar os clientes e personalizar ainda mais o elemento < detail> do Fault, ok?
+
+Através do método *getFaultInfo* podemos devolver um objeto que encapsula esses informações, por exemplo:
+```java
+public InfoFault getFaultInfo() {
+    return new InfoFault("Token invalido" , new Date());
+}
+```
+Essa classe precisa ser criada e possui, além dos construtores, uma anotação do JAX-B:
+```java
+@XmlAccessorType(XmlAccessType.FIELD)
+public class InfoFault {
+
+    private Date dataErro;
+    private String mensagem;
+
+    public InfoFault(String mensagem, Date dataErro) {
+        this.mensagem = mensagem;
+        this.dataErro = dataErro;
+    }
+
+    //JAX-B precisa
+    InfoFault() {
+    }
+
+}
+```
+Isso causa que o elemento < detail> do Fault possui as informações dos atributos da classe InfoFault. Veja o XML:
+```xml
+<S:Fault xmlns:ns4="http://www.w3.org/2003/05/soap-envelope">
+         <faultcode>S:Server</faultcode>
+         <faultstring>Autorizacao falhou</faultstring>
+         <detail>
+            <ns2:AutorizacaoFault xmlns:ns2="http://ws.estoque.com.br/">
+               <dataErro>2015-07-01T17:03:47.594-03:00</dataErro>
+               <mensagem>Token invalido</mensagem>
+            </ns2:AutorizacaoFault>
+         </detail>
+</S:Fault>
+```
+ 
+## O elemento Fault
+Na mensagem SOAP, onde deve aparecer o Fault?
+
+###### O Fault deve aparecer logo abaixo do Body, 
+por exemplo:
+```xml
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+   <S:Body>
+      <S:Fault xmlns:ns4="http://www.w3.org/2003/05/soap-envelope">
+         <faultcode>S:Server</faultcode>
+         <faultstring>Autorizacao falhou</faultstring>
+         <detail>
+            <ns2:AutorizacaoFault xmlns:ns2="http://ws.estoque.caelum.com.br/">
+               <message>Autorizacao falhou</message>
+            </ns2:AutorizacaoFault>
+         </detail>
+      </S:Fault>
+   </S:Body>
+</S:Envelope>
+```
+Segue também uma breve descrição dos** elementos principais de um Fault**:
+- < faultcode> - **Server** ou **Client** para indicar onde ocorreu o problema, mas existem outros como **VersionMissmatch**
+- < faultstring> - uma **explicação do Fault** legível para humanos
+- < detail> - mais informações sobre o Fault, normalmente** específicas da aplicação**
+###### O < faultcode> e < faultstring> são obrigatórios.
+ 
+## Mãos a obra: exceções unchecked
+ 
+Continuando falando sobre exceções e Faults. Vamos testar uma exceção do tipo **unchecked** (ou seja unmodeled).
+
+No projeto já preparamos um validador do item (a classe **ItemValidador**). Use este validador no método *cadastrarItem* da classe **EstoqueWS**:
+   ```java
+@WebMethod(operationName="CadastrarItem") 
+    public Item cadastrarItem(@WebParam(name="tokenUsuario", header=true) TokenUsuario token, @WebParam(name="item") Item item) throws AutorizacaoException {
+
+        System.out.println("Cadastrando " + item + ", " + token);
+
+        if(! new TokenDao().ehValido(token)) {
+            throw new AutorizacaoException("Autorizacao falhou");
+        }
+
+        //novo
+        new ItemValidador(item).validate();
+
+        this.dao.cadastrar(item);
+        return item;
+    }
+```
+A única linha nova é: **new ItemValidador(item).validate()**. Ao chamar o validador lança uma **ItemValidadorException** caso o item esteja inválido. 
+
+Essa exceção é **unchecked**, ou seja, **não faz parte do WSDL**. Faça o teste, envie uma mensagem SOAP com um token válido mas o item inválido, por exemplo:
+```xml
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ws="http://ws.estoque.caelum.com.br/">
+   <soapenv:Header>
+      <ws:tokenUsuario soapenv:mustUnderstand="1">
+         <token>AAA</token>
+         <dataValidade>2015-12-31T00:00:00</dataValidade>
+      </ws:tokenUsuario>
+   </soapenv:Header>
+   <soapenv:Body>
+      <ws:CadastrarItem>
+         <!--Optional:-->
+         <item>
+            <codigo>M</codigo>
+            <nome>MEAN</nome>
+            <tipo>Livro</tipo>
+            <quantidade>5</quantidade>
+         </item>
+      </ws:CadastrarItem>
+   </soapenv:Body>
+</soapenv:Envelope>
+```
+Nessa mensagem SOAP o código está errado pois possui apenas 1 char. Teste agora :)
+
+Repare que recebemos também um Fault como resposta:
+```xml
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+   <S:Body>
+      <S:Fault xmlns:ns4="http://www.w3.org/2003/05/soap-envelope">
+         <faultcode>S:Server</faultcode>
+         <faultstring>[Codigo invalido]</faultstring>
+      </S:Fault>
+   </S:Body>
+</S:Envelope>
+```
+O Fault é mais genérico, não possui um elemento < detail>. 
+A exceção não faz parte do WSDL, **nem adianta colocar @WebFault**.
+
+Uma pergunta que poderia surgir: será que não tem como definir, de maneira explícita, que o código de um item deve ter 3 chars? 
+Tem! 
+
+E o lugar certo para tal regras é o **XSD**! Assunto que abordaremos mais a frente :)
+ 
+ 
+## Mãos a obra: Dados obrigatórios
+Ao atualizar e criar um novo request no SoapUI, o XML SOAP mostra alguns comentários indicando que os elementos do Item e TokenUsuario são opcionais! Veja só:
+```xml
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ws="http://ws.estoque.caelum.com.br/">
+   <soapenv:Header>
+      <ws:tokenUsuario>
+         <!--Optional:-->
+         <token>?</token>
+         <!--Optional:-->
+         <dataValidade>?</dataValidade>
+      </ws:tokenUsuario>
+   </soapenv:Header>
+   <soapenv:Body>
+      <ws:CadastrarItem>
+         <!--Optional:-->
+         <item>
+            <!--Optional:-->
+            <codigo>?</codigo>
+            <!--Optional:-->
+            <nome>?</nome>
+            <!--Optional:-->
+            <tipo>?</tipo>
+            <quantidade>?</quantidade>
+         </item>
+      </ws:CadastrarItem>
+   </soapenv:Body>
+</soapenv:Envelope>
+```
+Entretanto, para nossa aplicação funcionar, **o cliente deve enviar todos os dados sobre o token e item**. 
+
+Essa confusão com certeza vai atrapalhar os clientes do nosso serviço web! Não podemos sinalizar os dados como opcionais que na verdade são obrigatórios.
+
+Para resolver essa confusão é preciso mexer nas classes **TokenUsuario** e **Item**. 
+
+Por padrão, 
+###### qualquer dado do nosso modelo é opcional a não ser quando configurado como obrigatório.
+
+Abra a classe **TokenUsuario** e faça que o** token e data se tornem obrigatórios**. 
+
+Use a anotação **@XmlElement** em cada atributo da classe. 
+
+Além disso, para simplificar, use a anotação **@XmlAccessorType** para definir o acesso aos atributo invés de usar os Getter/Setter:
+
+```java
+@XmlAccessorType(XmlAccessType.FIELD)
+public class TokenUsuario {
+
+    @XmlElement(required=true)
+    private String token;
+	
+    @XmlElement(required=true)
+    private Date dataValidade;
+
+    //JAX-B precisa desse construtor
+    TokenUsuario() {
+    }
+
+    public TokenUsuario(String token, Date dataValidade) {
+        this.token = token;
+        this.dataValidade = dataValidade;
+    }
+    //outros métodos omitidos
+}
+```
+Essas anotações são da especificação JAX-B que é utilizado pelo JAX-WS para gerar e ler o XSD/XML.
+
+Agora faça o mesmo na classe **Item**:
+
+```java
+@XmlAccessorType(XmlAccessType.FIELD)
+@XmlRootElement
+public class Item {
+
+    @XmlElement(required=true)
+    private String codigo;
+
+    @XmlElement(required=true)
+    private String nome;
+
+    @XmlElement(required=true)
+    private String tipo;
+
+    @XmlElement(required=true)
+    private int quantidade;
+
+    //construtores e métodos omitidos
+}
+```
+Republique o serviço web no Eclipse e depois atualize o SoapUI e gere um novo request. O SoapUI ainda mostra um elemento opcional?
+
+Essa mudança não resolveu ainda todo o problema, o SoapUI ainda indica que o **item** em si é opcional que não é correto. 
+
+Vamos resolver esse problema mais para frente, ok?
+```xml
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ws="http://ws.estoque.caelum.com.br/">
+   <soapenv:Header>
+      <ws:tokenUsuario>
+         <token>?</token>
+         <dataValidade>?</dataValidade>
+      </ws:tokenUsuario>
+   </soapenv:Header>
+   <soapenv:Body>
+      <ws:CadastrarItem>
+         <!--Optional:-->
+         <item>
+            <codigo>?</codigo>
+            <nome>?</nome>
+            <tipo>?</tipo>
+            <quantidade>?</quantidade>
+         </item>
+      </ws:CadastrarItem>
+   </soapenv:Body>
+</soapenv:Envelope>
+```
+
+Em geral, já sabemos, **quando se desenvolve um serviço web é fundamental observar como os clientes vão utilizar o serviço**. 
+
+O contrato, ou seja **o WSDL, é muito mais importante do que a implementação** (a classe). 
+
+Os clientes não sabem nada da nossa classe e só enxergam o WSDL. 
+
+Todas as más e boas práticas no contrato vão se espalhar nos clientes!
+
+O desenvolvedor mais experiente já ouviu falar da frase: **Program to Interface, not an Implementation**. 
+
+Isso também vale, ou vale ainda mais para serviços web! É preciso verificar com muito detalhe o que estamos publicando pois isso o cliente vai enxergar. 
+
+A nossa classe **EstoqueWS** é apenas a implementação que atende as requisições, nada mais.
+
+Nos próximos capítulos conversaremos mais sobre essa questão fundamental de design de um serviço web .
+ 
+ 
+## (Desafio) XmlAdapter
+Todas as mensagens SOAP enviadas para o serviço de cadastro de ítens, agora precisam possuir o Token para autenticação. Esse token, que é enviado no Header da mensagem, possui um código além de uma data de validade. Por exemplo:
+```xml
+<soapenv:Header>
+      <ws:tokenUsuario soapenv:mustUnderstand="1">
+         <token>AAA</token>
+         <dataValidade>2015-12-31T00:00:00</dataValidade>
+      </ws:tokenUsuario>
+   </soapenv:Header>
+```
+No entanto, estamos enviando a data no formato UTC que é pouco amigável para humanos. Como podemos melhorar este formato, fazendo com que o JAX-B consiga entender uma data no estilo dd/MM/yyyy ?
+```xml
+<soapenv:Header>
+      <ws:tokenUsuario soapenv:mustUnderstand="1">
+         <token>AAA</token>
+         <dataValidade>31/12/2015</dataValidade>
+      </ws:tokenUsuario>
+   </soapenv:Header>
+```
+Precisamos ensinar ao JAX-B que quando ele encontrar o **valor do atributo dataValidade no formato dd/MM/yyyy, este valor deve ser convertido em um date (unmarshal).**
+
+Ou seja, vamos criar uma classe que fará essa adaptação para nós.
+```java
+public class DateAdapter {
+
+    private String pattern = "dd/MM/yyyy";
+
+    public Date unmarshal(String dateString) throws Exception {
+        return new SimpleDateFormat(pattern).parse(dateString);
+    }
+
+}
+```
+De forma inversa, devemos **ensinar o JAX-B a converter um Date em uma String do tipo dd/MM/yyyy (marshal)**.
+
+```java
+public String marshal(Date date) throws Exception {
+   return new SimpleDateFormat(pattern).format(date);
+}
+```
+Nossa classe DateAdapter deverá ficar algo como:
+public class DateAdapter {
+
+```java
+   private String pattern = "dd/MM/yyyy";
+
+   public Date unmarshal(String dateString) throws Exception {
+      return new SimpleDateFormat(pattern).parse(dateString);
+   }
+
+   public String marshal(Date date) throws Exception {
+      return new SimpleDateFormat(pattern).format(date);
+   }
+}
+```
+Devemos agora dizer na nossa classe **TokenUsuario** que gostariamos de usar o **Adapter** que criamos para o **atributo dataValidade**. 
+
+Para isso, usaremos a anotação @**XmlJavaTypeAdapter**:
+```java
+@XmlAccessorType(XmlAccessType.FIELD)
+public class TokenUsuario {
+
+   @XmlElement(required=true)
+   private String token;
+
+   @XmlJavaTypeAdapter(DateAdapter.class)
+   @XmlElement(required=true)
+   private Date dataValidade;
+
+   // código omitido
+```
+Para finalizar, precisamos dizer que essa classe **é um adapter do JAX-B**. 
+
+Para isso, iremos** extender a classe abstrata XmlAdapter**.
+
+Como ficará a classe DateAdapter?
+
+```java
+public class DateAdapter extends XmlAdapter<String, Date> {
+
+    private String pattern = "MM/dd/yyyy";
+
+    public String marshal(Date date) throws Exception {
+        return new SimpleDateFormat(pattern).format(date);
+    }
+
+    public Date unmarshal(String dateString) throws Exception {
+        System.out.println(dateString);
+        return new SimpleDateFormat(pattern).parse(dateString);
+    }
+}
+```
+Esse foi um desafio interessante. Se você já tem uma certa experiência com Java, provavelmente já percebeu que o que fizemos é bem parecido com os conversores do JSF ou do SpringMVC. É bem provável que você use bastante esse tipo de adaptação em projetos reais que envolvam outros tipos.
+Te vejo no próximo capítulo (:
 
 
 
