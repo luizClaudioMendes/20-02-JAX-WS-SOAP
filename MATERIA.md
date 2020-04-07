@@ -3228,6 +3228,3 @@ Para não gerar problemas de compatibilidade, a grande maioria dos serviços usa
 
 - **wsimport** e **wsdl2java** são ferramentas de linha de comando para **gerar as classes Java** a partir do **WSDL**.
 
-
-
-## AULA 1
