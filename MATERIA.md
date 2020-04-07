@@ -1,5 +1,6 @@
 # CURSO DE JAX-WS-SOAP
 ###### concluído em 04/02/2018
+###### markup em 07/04/2020
 
 ## WHAT I NEED?
 - Objetivo: **desenvolver um projeto Java para criar um serviço SOAP**. 
@@ -2855,21 +2856,283 @@ public class EstoqueWSImpl implements EstoqueWS {
 ###### Nosso serviço agora ganha todos as características de um Session Bean Stateless como pool de instâncias, Gerenciamento de persistência e transações, segurança, thread safety, entre outras coisas.
 
 
+## Cliente Java
+Conseguimos testar o nosso serviço web com a ajuda do SoapUI. 
+
+A ferramenta leu o WSDL e criou todo o cliente, incluindo a mensagem SOAP. 
+
+Agora queremos usar o serviço de estoque em uma **aplicação Java**.
+
+Como já vimos, com a instalação do JRE já vem também uma implementação do JAX-WS. No caso da JRE da Oracle já vem com a implementação JAX-WS que se chama Metro.
+
+Como vimos nos capítulos anteriores, nada impediu criar o serviço web usando a JRE apenas, **no entanto para gerar o cliente é preciso ter o JDK instalado**. Uma vez criadas as classes do cliente basta também o JRE apenas.
+
+## Usando o wsimport
+O **Metro** possui uma ferramenta, o **wsimport** (e justamente essa ferramenta só vem com o JDK), que **consegue gerar as classes que acessam o serviço de uma maneira transparente**. 
+
+Objetivo do **wsimport** é o mesmo do **wsdl2java**, **gerar as classes para criar o cliente ou servidor**.
+
+Para tal, basta passar o endereço do WSDL e automaticamente serão criadas todas as classes necessárias para chamar o serviço remoto. 
+
+O wsimport é um gerador de código para serviços SOAP!
+
+## Projeto do cliente
+Para não confundir as classes geradas com as classes do servidor vamos criar um novo projeto estoque-cliente (projeto padrão java).
+
+Depois disso abra um terminal e entre na pasta do projeto estoque-cliente. 
+
+Execute na linha de comando:
+###### wsimport -s src -p br.com.caelum.estoque.cliente    http://localhost:8080/estoque/EstoqueWS?wsdlwsimport -s src -p br.com.caelum.estoque.cliente    http://localhost:8080/estoque/EstoqueWS?wsdl
+
+Repare nos parâmetros que passamos:
+**-s** - diretório dos arquivos .java gerados
+**-p** - pacote das classes geradas
+
+As classes geradas são as classes do mapeamento do JAX-B e algumas outras específicas para chamar o serviço. Entre elas temos uma interface Java **EstoqueWS** e uma classe **EstoqueWSService** que usaremos mais para frente.
+
+## Implementando o cliente e o Port
+Com essas classes prontas já podemos criar o cliente para nosso serviço. 
+
+A interface **EstoqueWS** está pronta pra receber algo que se chama de **Port**. 
+
+O Port é nada mais do que o **objeto que se comunica com o serviço**! 
+
+Ele abstrai todos os detalhes como estabelecer a conexão HTTP e gerar a mensagem SOAP. Em alguns casos ele também é chamado de **stub**. 
+
+De qualquer forma, no mundo de **padrões de projeto** esse objeto também é chamado de **proxy** ou **remote proxy**. 
+
+3 nomes para a mesma coisa: **Port**, **Stub** ou **Remote Proxy**!
+
+O código é relativamente simples, basta criar uma instância da classe **EstoqueWSService** e pedir o **Port**:
+```java
+EstoqueWS cliente = new EstoqueWSService().getEstoqueWSPort();
+Com o cliente em mãos basta chamar um método do serviço:
+Filtro filtro = new Filtro();
+filtro.setNome("IPhone");
+filtro.setTipo(TipoItem.CELULAR);
+ListaItens lista = cliente.todosOsItens(Arrays.<Filtro>asList(filtro));
+```
+Pronto, isso já basta para criar a mensagem SOAP de ida, enviar um request HTTP e receber a resposta SOAP. Simples não?
 
 
+### Outras ferramentas:
+Existem outras ferramentas, como o próprio SoapUI, para gerar as classes do cliente a partir do WSDL, como as que vêm com as outras implementações da especificação do JAX-WS, como por exemplo CXF. Até no Eclipse ou Netbeans existem Wizards para criar as classes pela interface gráfica.
+
+## O que você aprendeu nesse capítulo?
+- significado do Port
+- usar a ferramenta wsimport
+- fazer uma chamada SOAP a partir do código Java
+ 
+### EXERCÍCIOS
+Quando criamos o cliente de um serviço SOAP, qual é o papel do Port?
+
+###### O Port é o objeto que se comunica com o serviço remotamente. Ele abstrai todos os detalhes como estabelecer a conexão HTTP e gerar a mensagem SOAP.O Port é o objeto que se comunica com o serviço remotamente. Ele abstrai todos os detalhes como estabelecer a conexão HTTP e gerar a mensagem SOAP.
+
+###### No mundo de padrões de projeto esse objeto também é chamado de Proxy ou Remote Proxy.
+
+No mundo de padrões de projeto esse objeto também é chamado de Proxy ou Remote Proxy. 
+
+Vimos a definição do port no WSDL dentro da seção service:
 
 
+    <service name="EstoqueWSService">
+        <port name="EstoqueWSPort" binding="tns:EstoqueWSPortBinding">
+          <soap:address location="REPLACE_WITH_ACTUAL_URL"/>
+        </port>
+      </service>
+
+Nos últimos dois capítulos vimos duas ferramentas: **wsdl2java** que faz parte do **CXF** e **wsimport** do **Metro**. 
+
+Qual é o objetivo dessas ferramentas?
+
+###### wsimport e wsdl2java são ferramentas de linha de comando para gerar as classes Java a partir do WSDL. As classes geradas ajudam escrever programas no lado do cliente ou servidor para serviços Web e abstraiam todo o trabalho com SOAP e HTTP em geral. Essas classes também são chamadas de stubs de cliente ou esqueletos de servidores.wsimport e wsdl2java são ferramentas de linha de comando para gerar as classes Java a partir do WSDL. As classes geradas ajudam escrever programas no lado do cliente ou servidor para serviços Web e abstraiam todo o trabalho com SOAP e HTTP em geral. Essas classes também são chamadas de stubs de cliente ou esqueletos de servidores.
+
+## Mãos a obra: Gerando o cliente
+1) Rode o servidor JBoss Wildfly. 
+Teste o serviço acessando o WSDL: 
+###### http://localhost:8080/estoque/EstoqueWS?wsdl. 
+No navegador deve aparecer o WSDL!
+
+2) Crie um novo projeto java chamado de estoque-cliente.
+
+3) Abra um terminal entre no diretório workspace/estoque-cliente digite:
+**wsimport -s src -p br.com.caelum.estoque.cliente http://localhost:8080/estoque-web/EstoqueWS?wsdl**
+Isso deve gerar as classes dentro da pasta src.
+
+4) No Eclipse atualize o projeto estoque-cliente. Devem aparecer as classes geradas.
+
+5) Crie uma nova classe **TesteClienteSoap** dentro do pacote br.com.caelum.estoque.cliente. Na hora da criação da classe, gere o método main.
+
+6) Implemente o método main (a implementação abaixo pode variar um pouco dependendo do seu WSDL publicado):
+```java
+EstoqueWS cliente = new EstoqueWSService().getEstoqueWSPort();
+
+Filtro filtro = new Filtro();
+filtro.setNome("IPhone");
+filtro.setTipo(TipoItem.CELULAR);;
+
+Filtros filtros = new Filtros();
+filtros.getFiltro().add(filtro);
+
+ListaItens lista = cliente.todosOsItens(filtros);
+
+System.out.println("Resposta do serviço: " + lista);
+```
+7) Execute o código e fique atento ao console.
+Repare que usamos uma fábrica (a classe **EstoqueWSService**) que devolve aquele objeto que se chama de **Port**.
+```java
+EstoqueWS cliente = new EstoqueWSService().getEstoqueWSPort();
+```
+Esse Port sabe gerar e receber a mensagem SOAP e encapsula toda comunicação remota. Faça uma vez um teste e imprima o Port, algo assim:
+
+```java
+EstoqueWS cliente = new EstoqueWSService().getEstoqueWSPort();
+System.out.println(cliente); //cliente é uma referencia que aponta para o objeto Port
+```
+Deve imprimir a mensagem (ou muito parecido):
 
 
+    JAX-WS RI 2.2.4-b01: Stub for http://localhost:8080/estoque-web/EstoqueWS
+Repare que o JAX-WS menciona um Stub que é apenas um sinônimo para Port ou Remote Proxy!
 
+## (Opcional) Cliente dinâmico
+Há uma variação para criar um serviço web usando diretamente a classe **Service** do **JAX-WS**, mas devemos passar a **URL** e o **namespace** do serviço.
+```java
+public class ClienteEstoque{
 
+    public static void main(String[] args) throws Exception {
 
+        URL url = new URL("http://localhost:8080/estoquews?wsdl");
+        QName qname = new QName("http://ws.estoque.caelum.com.br/", "EstoqueWSService");
 
+        Service service = Service.create(url, qname);
 
+        EstoqueWS cliente = service.getPort(EstoqueWS.class);
 
+        Filtro filtro = new Filtro();
+        filtro.setNome("IPhone");
+        filtro.setTipo(TipoItem.CELULAR);;
 
+        ListaItens lista = cliente.todosOsItens(Arrays.<Filtro>asList(filtro));
 
+        for (Item item : lista.item) {
+            System.out.println(item.getNome());
+        }
+    }
+}
+```
 
+No projeto estoque-cliente teste esse código! Será que há alguma vantagem?
+
+O código não é tão diferente daquilo apresentado no capítulo mas tem uma vantagem. 
+
+A URL do serviço é apenas uma string e pode ser alterado dinamicamente. Isso pode ser útil quando queremos mudar do ambiente de homologação de ambiente de produção. 
+
+Nesse caso poderíamos configurar a URL em um arquivo externo e entre os ambientes é trocado o arquivo.
+
+## (Opcional) Desafio: Consumindo o serviço dos Correios
+Os correios disponibilizam um serviço SOAP para cálculo de valores de frete no Brasil, que está documentado em:
+###### http://www.correios.com.br/webservices/.
+
+Acesse esse endereço e clique no link para fazer o download da especificação do serviço. O WSDL do serviço se encontra aqui:
+**http://ws.correios.com.br/calculador/CalcPrecoPrazo.asmx?WSDL**
+
+Vamos criar o cliente para este serviço! Para isso:
+1) Crie um novo projeto Java no Eclipse. Chame o projeto de correios-cliente.
+
+2) Abra um terminal e entre no diretório workspace/correios-cliente. Gere as classes com wsimport:
+**wsimport -s src/ -p br.com.caelum.correios.soap http://ws.correios.com.br/calculador/CalcPrecoPrazo.asmx?WSDL**
+
+3) Volte ao Eclipse e atualize o projeto correiros-cliente. Devem aparecer as classes do Port.
+
+4) Crie uma nova classe **TesteClienteCorreios** com um método *main*. No método main usa a fábrica do Port para instanciar o cliente:
+```java
+package br.com.caelum.correios.soap;
+
+public class TesteClienteCorreios {
+
+    public static void main(String[] args) {
+        CalcPrecoPrazoWSSoap cliente = new CalcPrecoPrazoWS().getCalcPrecoPrazoWSSoap();
+    }
+}
+```
+5) O método para calcular o frete se chama *calcPrecoPrazo*, no entanto recebe 13 (!) parâmetros. Para deixar o código mais fácil de entender vamos declarar primeiro os parâmetros e depois chamar o método calcPrecoPrazo:
+```java
+String codigoSedex = "40010";
+String cepOrigemCaelumSP = "04101300"; //Caelum SP
+String cepDestino = "20040030"; // Caelum RJ
+String peso3kg = "3";
+BigDecimal comprimento20cm = new BigDecimal(20);
+BigDecimal altura10cm = new BigDecimal(10);
+BigDecimal largura15cm = new BigDecimal(15);
+BigDecimal diametro10cm = new BigDecimal(10);
+int formatoEncomendaCaixa = 1; // 1 é caixa ou pacote
+BigDecimal semValorDeclarado= BigDecimal.ZERO;
+String semEntregueEmMaos = "N";
+String semAvisoRecebimento = "N";
+String semCodigoEmpresa = "";
+String semSenhaEmpresa = "";
+
+//fazendo a chamada do serviço
+CResultado resultado = cliente.calcPrecoPrazo(
+                semCodigoEmpresa, semSenhaEmpresa, 
+                codigoSedex, cepOrigemCaelumSP, cepDestino, 
+                peso3kg, formatoEncomendaCaixa, 
+                comprimento20cm, altura10cm, largura15cm, diametro10cm, 
+                semEntregueEmMaos, semValorDeclarado, semAvisoRecebimento);
+
+//recuperando o resultado
+List<CServico> servicosPesquisados = resultado.getServicos().getCServico();
+valorFrete = servicosPesquisados.get(0).getValor();
+
+System.out.printf("Frete para %s eh de %s %n", cepDestino, valorFrete);
+```
+6) Tudo compilando? Então faça a chamada ao serviço de correios calculando o valor do frete entre Caelum em São Paulo para Caelum Rio via SEDEX.
+
+Segue uma vez o código completo:
+```java
+package br.com.caelum.correios.soap;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+public class TesteClienteCorreios {
+
+    public static void main(String[] args) {
+        CalcPrecoPrazoWSSoap cliente = new CalcPrecoPrazoWS().getCalcPrecoPrazoWSSoap();
+
+        String codigoSedex = "40010";
+        String cepOrigemCaelumSP  = "04101300"; //Caelum SP
+        String cepDestinoCaelumRJ = "20040030"; //Caelum RJ
+        String peso3kg = "3";
+        BigDecimal comprimento20cm = new BigDecimal(20);
+        BigDecimal altura10cm = new BigDecimal(10);
+        BigDecimal largura15cm = new BigDecimal(15);
+        BigDecimal diametro10cm = new BigDecimal(10);
+        int formatoEncomendaCaixa = 1; // 1 é caixa ou pacote
+        BigDecimal semValorDeclarado= BigDecimal.ZERO;
+        String semEntregueEmMaos = "N";
+        String semAvisoRecebimento = "N";
+        String semCodigoEmpresa = "";
+        String semSenhaEmpresa = "";
+
+        //chamando o serviço
+        CResultado resultado = cliente.calcPrecoPrazo(
+                        semCodigoEmpresa, semSenhaEmpresa, 
+                        codigoSedex, cepOrigemCaelumSP, cepDestinoCaelumRJ, 
+                        peso3kg, formatoEncomendaCaixa, 
+                        comprimento20cm, altura10cm, largura15cm, diametro10cm, 
+                        semEntregueEmMaos, semValorDeclarado, semAvisoRecebimento);
+
+        //recuperando o valor
+        List<CServico> servicosPesquisados = resultado.getServicos().getCServico();
+        String valorFrete = servicosPesquisados.get(0).getValor();
+
+        System.out.printf("Frete para %s eh de %s %n", cepDestinoCaelumRJ, valorFrete);
+    }
+}
+
+```
 
 
 ## KEYWORDS
