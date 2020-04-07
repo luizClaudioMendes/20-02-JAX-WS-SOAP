@@ -2526,6 +2526,333 @@ Sobre o elemento < binding> podemos afirmar:
 
 Em WSDL abstrato somente definimos a interface, o que é suficiente para implementação do serviço. Deixamos detalhes a respeito do formato da mensagem e de como ela deve ser entregue a cargo do WSDL concreto.
 
+## Usando SOAP no servidor de aplicação
+## Revisão
+No último capítulo vimos os detalhes do WSDL concreto, falamos muito sobre as seções binding e service. 
+
+Nessas seções se encontram as regras que definem a codificação, protocolo e endereço do nosso serviço. 
+
+Vimos que existem os estilos RPC e Document, além da codificação encoded e literal. 
+
+Hoje em dia, a grande maioria dos serviços usam Document/literal. Porém para atender o estilo RPC foi criado o Document/literal/Wrapped.
+
+Já criamos o nosso serviço e definimos os métodos mais importantes. Ou seja, o contrato já está pronto. Mas para deixar perfeito falta acessar o banco de dados, fazer o controle de transações e publicar o serviço de maneira robusta. E justamente aqui entra o servidor de aplicação, o papel dele é fornecer estes recursos de infraestrutura para a aplicação.
+
+Já criamos o contrato do serviço, então vamos partir desse contrato para criar a implementação em uma aplicação que roda dentro servidor. 
+
+Imagine que a equipe de integração definiu o WSDL e a sua tarefa agora é fornecer a implementação. Mãos a obra!
+
+
+## JAX-WS no servidor Wildfly
+O servidor de aplicação também já vem com uma implementação JAX-WS. 
+
+Para utilizar essa implementação vamos criar uma aplicação web. 
+
+Aqui não há novidade, basta criar um projeto web no Eclipse para rodar no JBoss Wildfly que já temos instalado. Mas quem tiver com dúvida, pode olhar no primeiro exercício onde explicamos como instalar e configurar o JBoss através do Eclipse.
+
+Uma vez o projeto criado podemos começar criar o nosso serviço. 
+
+Como falamos, vamos usar o contrato como ponto de partida.
+
+
+## CXF e wsdl2java
+O primeiro passo é copiar o arquivo para a pasta src do projeto. 
+
+Uma vez copiado podemos pensar na criação das classes. 
+
+O JAX-WS vai nos ajudar nessa tarefa. Na verdade a implementação do JAX-WS que o JBoss incorpora que se chama **CXF** (é uma das mais populares do mercado). 
+
+Ela possui uma ferramenta para criar automaticamente as classes do Servidor ou do cliente a partir do WDSL chamada, não por acaso, de **wsdl2java**. 
+
+Vamos usar o WSDL para gerar as classes e subir o serviço. Como criamos o serviço nos primeiros capítulos, poderíamos criar a classe manualmente, mas isso pode ser muito trabalhoso com contratos mais complexos. Então vamos usar essa ferramenta para agilizar nosso trabalho.
+
+Como já falamos essa ferramenta se chama **wsdl2java** e é do **CXF**. 
+
+###### O JBoss quer ainda mais facilitar e criou um pequeno script para acessar o wsdl2java. Esse script está na pasta bin do Wildlfy. 
+
+Veja o comando, que recebe a pasta de saida e o WSDL:
+
+**wsconsume -k -n -o /Users/nico/workspace/estoque-web/src /Users/nico/workspace/estoque-web/src/EstoqueWSServiceCap5.wsdl**
+
+As opções são:
+**-k** - keep, para manter o código fonte
+**-o** - para definir a pasta de saída
+**-n** - não compilar (pois o Eclipse vai compilar)
+
+Ao executar na linha de comando podemos ver que o script realmente usa a ferramenta wsdl2java:
+
+
+    Loading FrontEnd jaxws ...
+    Loading DataBinding jaxb ...
+    wsdl2java -exsh false -d /Users/nico/workspace/estoque-web/src -verbose -allowElementReferences file:/Users/nico/workspace/estoque-web/src/EstoqueWSServiceCap5.wsdl
+    wsdl2java - Apache CXF 2.7.11
+    
+
+Vamos dar uma olhada no nosso projeto para ver quais classes foram criadas.
+
+Repare que a maioria das classes são bem familiares. Temos classes do nosso modelo como **Item**, **TipoItem** ou **Filtro** e temos classes para cada mensagem, por exemplo: **CadastrarItem** e **CadastrarItemResponse**, ou **TodosOsItens** e **TodosOsItensResponse**. Além disso, temos duas classes ligada a nosso serviço: **EstoqueWS** e **EstoqueWSService**.
+
+Vamos abrir a classe **EstoqueWS**:
+
+```java
+@WebService(targetNamespace = "http://ws.estoque.caelum.com.br/", name = "EstoqueWS")
+@XmlSeeAlso({ObjectFactory.class})
+public interface EstoqueWS {
+
+    @WebResult(name = "itens", targetNamespace = "")
+    @Action(input = "http://ws.estoque.caelum.com.br/EstoqueWS/TodosOsItensRequest", output = "http://ws.estoque.caelum.com.br/EstoqueWS/TodosOsItensResponse")
+    @RequestWrapper(localName = "TodosOsItens", targetNamespace = "http://ws.estoque.caelum.com.br/", className = "br.com.caelum.estoque.ws.TodosOsItens")
+    @WebMethod(operationName = "TodosOsItens")
+    @ResponseWrapper(localName = "TodosOsItensResponse", targetNamespace = "http://ws.estoque.caelum.com.br/", className = "br.com.caelum.estoque.ws.TodosOsItensResponse")
+    public br.com.caelum.estoque.ws.ListaItens todosOsItens(
+        @WebParam(name = "filtros", targetNamespace = "http://ws.estoque.caelum.com.br/")
+        br.com.caelum.estoque.ws.Filtros filtros
+    );
+
+    @SOAPBinding(parameterStyle = SOAPBinding.ParameterStyle.BARE)
+    @WebResult(name = "CadastrarItemResponse", targetNamespace = "http://ws.estoque.caelum.com.br/", partName = "result")
+    @Action(input = "http://ws.estoque.caelum.com.br/EstoqueWS/CadastrarItemRequest", output = "http://ws.estoque.caelum.com.br/EstoqueWS/CadastrarItemResponse", fault = {@FaultAction(className = AutorizacaoFault.class, value = "http://ws.estoque.caelum.com.br/EstoqueWS/CadastrarItem/Fault/AutorizacaoException")})
+    @WebMethod(operationName = "CadastrarItem")
+    public CadastrarItemResponse cadastrarItem(
+        @WebParam(partName = "parameters", name = "CadastrarItem", targetNamespace = "http://ws.estoque.caelum.com.br/")
+        CadastrarItem parameters,
+        @WebParam(partName = "tokenUsuario", name = "tokenUsuario", targetNamespace = "http://ws.estoque.caelum.com.br/", header = true)
+        TokenUsuario tokenUsuario
+    ) throws AutorizacaoFault;
+}
+```
+É um festival de anotações e configurações, olhando com calma podemos ver que foram já usadas a grande maioria das configurações. O interessante é que foi criado uma interface baseado no elemento **portType** do WSDL e foi gerado esse código. A nossa tarefa agora é criar a implementação dessa interface.
+
+Em um primeiro momento, poderíamos pensar que a implementação já foi gerada pois temos uma classe com o nome **EstoqueWSService**. No entanto, essa classe serve para a criação de um cliente. Usaremos ela no próximo capítulo.
+
+## Contract First Design
+Repare que estamos fazendo justamente o contrário dos capítulos anteriores. 
+
+###### Agora estamos partindo de um WDSL e as classes foram geradas. 
+
+Essa forma de criar um serviço se chama de contract first (ou implementation last). Dessa forma valorizamos mais o contrato e a implementação é apenas um detalhe. Quando criarmos primeiro as classes e consequentemente o contrato é gerado, há um certo risco de nosso WSDL ficar com ruídos da implementação sendo pouco expressivo. Ao valorizar o contrato minimizarmos este problema.
+
+## Implementação como detalhe
+Para realmente publicar o serviço, falta implementar a interface gerada. 
+
+Vamos criar uma nova classe com o nome **EstoqueWSImpl**. 
+
+Já no diálogo do Eclipse vamos definir a interface.
+
+Na classe criada devemos utilizar anotação **@WebService** para referenciar a interface:
+```java
+@WebService(endpointInterface="br.com.caelum.estoque.ws.EstoqueWS")
+public class EstoqueWSImpl implements EstoqueWS {
+Nos métodos vamos fazer algo bem simples e devolver um item fixo. Porém, fique a vontade para melhorar o código:
+@Override
+public ListaItens todosOsItens(Filtros filtros) {
+    System.out.println("Chamando todos os Itens");
+    ListaItens listaItens = new ListaItens();
+    listaItens.item = Arrays.asList(geraItem());
+    return listaItens;
+}
+
+@Override
+public CadastrarItemResponse cadastrarItem(CadastrarItem parameters, TokenUsuario tokenUsuario) throws AutorizacaoFault {
+    System.out.println("Chamando cadastarItem");
+    CadastrarItemResponse resposta = new CadastrarItemResponse();
+    resposta.setItem(geraItem());
+    return resposta;
+}
+
+//método auxiliar
+private Item geraItem() {
+    Item item = new Item();
+    item.codigo = "MEA";
+    item.nome = "MEAN";
+    item.quantidade = 5;
+    item.tipo = "Livro";
+    return item;
+}
+```
+ 
+## Publicando o serviço no Wildfly
+Tudo pronto para publicar? Garanta que você associou o projeto com o servidor JBoss Wildfly.
+
+Vamos subir o servidor e ficar de olho no console, onde iremos visualizar o endereço do WSDL:
+
+
+
+    address=http://localhost:8080/estoque-web/EstoqueWSImpl
+     implementor=br.com.caelum.estoque.ws.EstoqueWSImpl
+     serviceName={http://ws.estoque.caelum.com.br/}EstoqueWSImplService
+     portName={http://ws.estoque.caelum.com.br/}EstoqueWSImplPort
+	 
+Repare que o nome da nossa implementação faz parte da URL que também aparece no WSDL.
+```xml
+<wsdl:service name="EstoqueWSImplService">
+  <wsdl:port binding="tns:EstoqueWSImplServiceSoapBinding" name="EstoqueWSImplPort">
+     <soap:address location="http://localhost:8080/estoque-web/EstoqueWSImpl"/>
+  </wsdl:port>
+</wsdl:service>
+```
+A nossa classe não possui um nome elegante, vamos corrigir isso já através dos atributos **serviceName** e **portName** da anotação **@WebService**:
+
+```java
+@WebService(endpointInterface="br.com.caelum.estoque.ws.EstoqueWS", 
+serviceName="EstoqueWS", 
+portName="EstoqueWSPort")
+```
+Para melhorar a URL basta na verdade o EstoqueWS, mas vamos melhorar o WSDL também e colocar um nome mais bonito no port. Mexemos na classe **EstoqueWSImpl** e não na interface, pois o WSDL concreto está sendo definido pela implementação, a parte abstrata vem da interface EstoqueWS.
+
+Só falta publicar o serviço para testar o WSDL pelo SoapUI. O novo endereço é:
+**http://localhost:8080/EstoqueWSWeb/EstoqueWS?wsdl**
+
+## O que aprendemos nesse capítulo?
+- Como gerar as classe do servidor com wsdl2java
+- Contract first significa criar o WSDL primeiro
+- Como publicar um serviço no JBoss Wildfly
+- CXF é uma outra implementação popular do JBoss
+ 
+## Mãos a obra: Instalação do JBoss Wildfly
+Vamos configurar o servidor Wildfly no Eclipse. Se você já configurou o Wildfly, pode pular este exercício.
+1) Para baixar o servidor de aplicação JBoss Wildfly acesse a página http://wildfly.org/downloads/. Baixe a versão 8 e extraia o arquivo.
+2) Com Eclipse (Java EE) aberto instale o Server Adapter (JBOSS TOOLS)  para rodar o Wildfly dentro do Eclipse. Para tal entre na View Servers e clique em New Server. Na janela procure o link Download additional server adapters. Na lista escolha JBoss AS Tools e confirme as próximas telas. Após a instalação, reinicie o Eclipse.
+3) Com o Server Adapter instalado, configure o Wildfly como Servidor no Eclipse. Novamente, abra a View Servers e crie um New Server. Na lista escolha o Wildfly na versão 8 e configure o diretório de instalação do Wildfly. Após a configuração, o Wildfly deve aparecer na lista de servers:
+4) Ainda na View Servers inicie o Wildfly. Fique atento ao console.
+Você pode testar a instalação ao acessar http://localhost:8080/
+Deve aparecer a página inicial do Wildfly:
+
+## Mãos a obra: Criação do projeto e geração das classes
+Como mostrado no vídeo do capítulo, é preciso criar o projeto e gerar as classes a partir do WSDL. 
+1) No Eclipse crie um novo projeto do tipo *Dynamic Web Project*. Chame o projeto estoque-web.
+
+2) Associe o projeto com o Wildfly (arrastando o projeto encima do Wildfly).
+
+3) Baixe o WSDL utilizado nesse treinamento disponível nesse link. Coloque o WSDL na pasta *src* do projeto estoque-web.
+
+4) Agora vamos gerar as classes a partir desse WSDL. Abra um terminal e entre na pasta da instalação do wildfly: wildfly-8.2.0/bin. Nessa pasta deve ter o script *wsconsume*. Se você usa Windows utiliza-se o *wsconsume.bat*, no Linux ou Mac usa-se wsconsume.sh.
+No Windows, assumindo que a pasta workspace está no C:\ execute:
+**wsconsume.bat -k -n -o C:\workspace\estoque-web\src C:\workspace\estoque-web\src\EstoqueWSServiceCap5.wsdl**
+Ajuste o comando se for necessário e acompanhe a saída para ver eventuais problemas:
+
+
+    Loading FrontEnd jaxws ...
+    Loading DataBinding jaxb ...
+    wsdl2java -exsh false -d C:\workspac\eestoque-web\src -verbose -allowElementReferences file:C:\workspace\estoque-web/src/EstoqueWSServiceCap5.wsdl
+    wsdl2java - Apache CXF 2.7.11
+	
+5) Por fim, volte no Eclipse e atualize o projeto estoque-web. No projeto deve aparecer o código fonte das classes geradas.
+
+Usaremos as classes no próximo exercício.
+
+###### O script wsconsume é apenas um wrapper para simplificar o uso da ferramenta wsdl2java que faz parte da implementação CXF que vem embutida no Wildfly (CXF é uma implementação da especificação JAX-WS). As classes geradas podem ser utilizadas para publicar o serviço ou criar o cliente!
+ 
+## Mãos a obra: Publicando o serviço no Wildfly
+Com o projeto estoque-web criado e classes geradas podemos implementar e publicar o serviços. Se você já implementou o serviço pode pular este exercício.
+
+1) No pacote **br.com.caelum.estoque.ws** que foi gerado pelo **wsdl2java**, crie uma nova classe com o nome **EstoqueWSImpl**. 
+
+A classe **EstoqueWSImpl** deve implementar a interface **EstoqueWS**.
+
+2) Na classe **EstoqueWSImpl** use a anotação **@WebService** para definir a interface, nome do serviço e port:
+```java
+@WebService(endpointInterface="br.com.caelum.estoque.ws.EstoqueWS", 
+serviceName="EstoqueWS", 
+portName="EstoqueWSPort")
+public class EstoqueWSImpl implements EstoqueWS {
+```
+3) Implemente os métodos exigidos pela interface:
+  ```java
+ @Override
+    public ListaItens todosOsItens(Filtros filtros) {
+        System.out.println("Chamando todos os Itens");
+        return new ListaItens();
+    }
+
+    @Override
+    public CadastrarItemResponse cadastrarItem(CadastrarItem parameters, TokenUsuario tokenUsuario) throws AutorizacaoFault {
+        System.out.println("Chamando cadastarItem");
+        return new CadastrarItemResponse();
+    }
+```
+Observação: Em ambos os métodos estamos retornando apenas um objeto vazio para deixar o código compilar.
+
+4) Reinicie o JBoss Wildfly no Eclipse e fique atento ao console.
+
+5) Se o servidor subiu sem problemas acesse: **http://localhost:8080/estoque-web/EstoqueWS?wsdl**
+
+Você deve ver o WSDL publicado.
+
+Tendo a URL com o WSDL você já pode testar a serviço com SoapUI. Faça o teste e submeta uma requisição com SOAP!
+
+## Contract first vs Contract last
+Vimos duas abordagens de criar um Web Service SOAP no treinamento: 
+
+Contract first e Contract last.
+
+###### Produzir um serviço a partir de um WSDL é chamado de Contract first. Produzir um serviço a partir de um WSDL é chamado de Contract first. 
+
+###### Gerar o WSDL a partir de uma classe Java, ou seja implementar primeiro o serviço (e o resto é gerado) é chamado do Contract last.Gerar o WSDL a partir de uma classe Java, ou seja implementar primeiro o serviço (e o resto é gerado) é chamado do Contract last.
+
+O Contract first pode ser usado quando temos um serviço já exposto e queremos migrá-lo para outra linguagem/plataforma, por exemplo, ou quando você tiver escrito o WSDL do zero, sem ser a partir de uma classe como fizemos no exercício anterior.
+
+Uma vantagem do Contract first é que equipes diferentes podem começar a trabalhar ao mesmo tempo, uma trabalhando na implementação do servidor, e outra no cliente. Uma vez que o contrato (WSDL) está definido os dois lados estão desacoplados.
+
+Outra vantagem do Contract first é uma definição mais clara do serviço. Ou seja, como não estamos escrevendo alguma implementação, o foco é o contrato e seus detalhes. Tópicos como expressividade, versionamento do serviço, granularidade e os tipos expostos são discutidos muito antes da implementação.
+
+A API exposta é sempre o WSDL e os tipos (o schema), ambos os documentos devem ser legíveis e bem escritos. A implementação é apenas um detalhe.
+
+Sabendo disso, você consegue imaginar alguma desvantagem do Contract First?
+
+Como desvantagem podemos notar que é preciso conhecer bem as especificações relacionadas aos Web Services que são WSDL e XSD, em geral é preciso dominar o mundo XML. 
+
+Com Contract first não basta conhecer algumas anotações da plataforma e gerar as classes. Contract last é muito mais simples pois abstrai todo o mundo SOAP/WSDL pois o WSDL e XSD são gerados.
+ 
+## Para saber mais: Implementações do JAX-WS
+Nesse treinamento estamos usando a especificação JAX-WS para publicar um serviço SOAP.
+
+No mundo **Java EE**, 
+###### qualquer especificação possui uma implementação. 
+
+Aliás, normalmente existem várias implementações. 
+
+Com JAX-WS isso não é diferente. 
+
+A implementação referencial vem com o JRE e faz parte do projeto **Metro**: 
+
+###### https://metro.java.net/
+
+que usamos no início do treinamento.
+
+Uma outra implementação é a **CXF**, muito popular e vem embutida no servidor **JBoss Wildfy**: 
+
+###### http://cxf.apache.org/. 
+
+No entanto o **CXF não depende do JBoss** e pode ser utilizado no Tomcat e standalone.
+
+Por último existe a implementação **Axis2**, também da Apache: 
+
+###### http://axis.apache.org/axis2/java/core/index.html
+
+O aluno atento talvez percebeu que no site do CXF também se encontram informações como publicar serviços **REST**. Para ser correto o **CXF** é um **Service Framework** que atende ambos, **SOAP** e **REST**. 
+
+###### Para o mundo SOAP o CXF implementa o JAX-WS, para atender um mundo REST segue a especificação JAX-RS!
+
+
+## Para saber mais: Usando EJB
+Como estamos rodando nossos serviços em um servidor de aplicação, podemos fazer uso dos beans especiais que são gerenciados pelo container que cuida de oferecer toda a gama de recursos de infra-estrutura através da inversão de controle.
+
+###### Chamamos eles de EJB.
+
+**A questão é que podemos transformar nosso WebService em um EJB. **
+
+
+Nosso serviço de estoque ganharia mais uma anotação, referente ao tipo de Session Bean. 
+
+Por exemplo, o Session Bean **Stateless**:
+
+```java
+@Stateless
+@WebService(endpointInterface="br.com.caelum.estoque.ws.EstoqueWS")
+public class EstoqueWSImpl implements EstoqueWS {
+```
+###### Nosso serviço agora ganha todos as características de um Session Bean Stateless como pool de instâncias, Gerenciamento de persistência e transações, segurança, thread safety, entre outras coisas.
 
 
 
